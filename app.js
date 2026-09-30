@@ -12,11 +12,11 @@
 // 1. CONFIGURATION & CONSTANTS
 // -------------------------------------------------------------------
 const STORAGE_KEYS = {
-  TRANSACTIONS: 'smart_expense_transactions_v2',
-  SETTINGS: 'smart_expense_settings_v2',
-  ACTIVE_VIEW: 'smart_expense_active_view_v2',
-  BALANCE_HIDDEN: 'smart_expense_balance_hidden_v2',
-  THEME: 'smart_expense_theme_v2'
+  TRANSACTIONS: 'smart_expense_transactions_v4',
+  SETTINGS: 'smart_expense_settings_v4',
+  ACTIVE_VIEW: 'smart_expense_active_view_v4',
+  BALANCE_HIDDEN: 'smart_expense_balance_hidden_v4',
+  THEME: 'smart_expense_theme_v4'
 };
 
 const CATEGORIES = {
@@ -37,8 +37,8 @@ const MONTH_NAMES_UZ = [
 ];
 
 const DEFAULT_SETTINGS = {
-  initialBalance: 7500000,
-  monthlyBudget: 5000000
+  initialBalance: 0,
+  monthlyBudget: 0
 };
 
 // -------------------------------------------------------------------
@@ -521,24 +521,10 @@ function loadStateFromStorage() {
 
     const storedTx = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
     if (storedTx) {
-      const parsed = JSON.parse(storedTx);
-      // Auto-merge demo transactions for previous months if user only has 1 month stored
-      const monthsInStorage = new Set((parsed || []).map(t => (t.date || '').substring(0, 7)).filter(Boolean));
-      if (monthsInStorage.size <= 1) {
-        const demoData = getFreshDemoTransactions();
-        const merged = Array.isArray(parsed) ? [...parsed] : [];
-        demoData.forEach(d => {
-          if (!merged.some(m => m.id === d.id)) {
-            merged.push(d);
-          }
-        });
-        state.transactions = merged;
-        saveTransactionsToStorage();
-      } else {
-        state.transactions = parsed;
-      }
+      state.transactions = JSON.parse(storedTx);
     } else {
-      state.transactions = getFreshDemoTransactions();
+      // Yangi foydalanuvchi birinchi marta kirganda toza no'l ma'lumotlar bilan boshlaydi
+      state.transactions = [];
       saveTransactionsToStorage();
     }
 
@@ -548,10 +534,11 @@ function loadStateFromStorage() {
     }
   } catch (err) {
     console.error("Storage loading error:", err);
-    state.transactions = getFreshDemoTransactions();
+    state.transactions = [];
     state.settings = { ...DEFAULT_SETTINGS };
   }
 }
+
 
 function saveTransactionsToStorage() {
   try {
@@ -654,9 +641,9 @@ function computeFinancialMetrics() {
 
   const initialBalance = Number(state.settings.initialBalance) || 0;
   const totalBalance = initialBalance + totalIncomeAllTime - totalExpenseAllTime;
-  const budget = Number(state.settings.monthlyBudget) || 1;
-  const budgetRemaining = Math.max(0, budget - monthlyExpense);
-  const rawBudgetPercent = Math.round((monthlyExpense / budget) * 100);
+  const budget = Number(state.settings.monthlyBudget) || 0;
+  const budgetRemaining = budget > 0 ? Math.max(0, budget - monthlyExpense) : 0;
+  const rawBudgetPercent = budget > 0 ? Math.round((monthlyExpense / budget) * 100) : 0;
   const budgetPercent = Math.min(100, Math.max(0, rawBudgetPercent));
   const daysInCurrentMonthSoFar = Math.max(1, now.getDate());
   const avgDaily = Math.round(monthlyExpense / daysInCurrentMonthSoFar);
