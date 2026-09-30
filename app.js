@@ -1,8 +1,8 @@
 /**
  * ===================================================================
- * SMART EXPENSE TRACKER - HIGH-PERFORMANCE JS ENGINE
- * Features: Mobile Tab Switcher, Bottom Nav, Debounced Search, 60 FPS
- * Architecture: Clean Vanilla ES6+
+ * SMART EXPENSE TRACKER - MODERN MOBILE FINTECH ENGINE
+ * Architecture: Clean Vanilla ES6+ with High Performance 60 FPS
+ * Inspired by modern iOS/Android fintech mobile banking apps
  * ===================================================================
  */
 
@@ -12,9 +12,11 @@
 // 1. CONFIGURATION & CONSTANTS
 // -------------------------------------------------------------------
 const STORAGE_KEYS = {
-  TRANSACTIONS: 'smart_expense_transactions_v1',
-  SETTINGS: 'smart_expense_settings_v1',
-  ACTIVE_VIEW: 'smart_expense_active_view_v1'
+  TRANSACTIONS: 'smart_expense_transactions_v2',
+  SETTINGS: 'smart_expense_settings_v2',
+  ACTIVE_VIEW: 'smart_expense_active_view_v2',
+  BALANCE_HIDDEN: 'smart_expense_balance_hidden_v2',
+  THEME: 'smart_expense_theme_v2'
 };
 
 const CATEGORIES = {
@@ -45,16 +47,19 @@ const DEFAULT_SETTINGS = {
 let state = {
   transactions: [],
   settings: { ...DEFAULT_SETTINGS },
-  currentView: 'dashboard', // 'dashboard', 'add', 'analytics', 'history', 'all'
+  currentView: 'dashboard', // 'dashboard', 'history', 'add', 'analytics'
   chartPeriod: 'month',
+  selectedMonthKey: getTodayDateString().substring(0, 7), // 'YYYY-MM' e.g. '2026-09'
   deleteTargetId: null,
-  isClearAllAction: false
+  isClearAllAction: false,
+  isBalanceHidden: false,
+  theme: 'light'
 };
 
 let categoryChartInstance = null;
 
 // -------------------------------------------------------------------
-// 3. UTILITY FUNCTIONS & PERFORMANCE HELPERS
+// 3. UTILITY FUNCTIONS & HELPERS
 // -------------------------------------------------------------------
 
 function debounce(fn, delay = 120) {
@@ -76,6 +81,15 @@ function getTodayDateString() {
   return `${year}-${month}-${day}`;
 }
 
+function getYesterdayDateString() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getOffsetDateString(daysOffset) {
   const d = new Date();
   d.setDate(d.getDate() + daysOffset);
@@ -88,7 +102,65 @@ function getOffsetDateString(daysOffset) {
 function formatCurrency(amount) {
   if (isNaN(amount)) return "0 so'm";
   const num = Math.round(amount);
-  return `${num.toLocaleString('ru-RU').replace(/,/g, ' ')} so'm`;
+  return `${num.toLocaleString('en-US')} so'm`;
+}
+
+function formatNumberWithCommas(value) {
+  if (value === null || value === undefined) return '';
+  const digitsOnly = String(value).replace(/\D/g, '');
+  if (!digitsOnly) return '';
+  return Number(digitsOnly).toLocaleString('en-US');
+}
+
+function parseFormattedNumber(value) {
+  if (!value) return 0;
+  const digitsOnly = String(value).replace(/\D/g, '');
+  return Number(digitsOnly) || 0;
+}
+
+function attachCommaInputFormatter(inputEl) {
+  if (!inputEl) return;
+  inputEl.addEventListener('input', () => {
+    const raw = inputEl.value;
+    const formatted = formatNumberWithCommas(raw);
+    inputEl.value = formatted;
+  });
+}
+
+function animateCurrencyNumber(el, targetAmount, duration = 380) {
+  if (!el || state.isBalanceHidden) return;
+  const currentAttr = el.getAttribute('data-raw-value');
+  const endNum = Math.round(targetAmount);
+  
+  if (currentAttr === null) {
+    el.setAttribute('data-raw-value', endNum);
+    el.textContent = formatCurrency(endNum);
+    return;
+  }
+  
+  const startNum = Number(currentAttr) || 0;
+  el.setAttribute('data-raw-value', endNum);
+
+  if (startNum === endNum) {
+    el.textContent = formatCurrency(endNum);
+    return;
+  }
+
+  const startTime = performance.now();
+  function step(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const currentVal = Math.round(startNum + (endNum - startNum) * ease);
+    el.textContent = formatCurrency(currentVal);
+
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      el.textContent = formatCurrency(endNum);
+    }
+  }
+  requestAnimationFrame(step);
 }
 
 function formatDateUZ(dateString) {
@@ -108,13 +180,14 @@ function generateId() {
 
 function getFreshDemoTransactions() {
   return [
+    // --- Sentabr (Joriy oy) ---
     {
       id: "tx-demo-1",
       type: "expense",
       amount: 145000,
       category: "food",
       paymentMethod: "card",
-      note: "Korzinka supermarket bozorlik",
+      note: "Korzinka supermarket",
       date: getTodayDateString(),
       createdAt: Date.now() - 3600000 * 2
     },
@@ -124,130 +197,244 @@ function getFreshDemoTransactions() {
       amount: 32000,
       category: "transport",
       paymentMethod: "card",
-      note: "Yandex Go taksi safari",
+      note: "Yandex Go taksi",
       date: getTodayDateString(),
       createdAt: Date.now() - 3600000 * 4
     },
     {
       id: "tx-demo-3",
+      type: "income",
+      amount: 2500000,
+      category: "income",
+      paymentMethod: "card",
+      note: "Freelance loyiha to'lovi",
+      date: getYesterdayDateString(),
+      createdAt: Date.now() - 86400000
+    },
+    {
+      id: "tx-demo-4",
       type: "expense",
       amount: 450000,
       category: "utilities",
       paymentMethod: "card",
       note: "Elektr va gaz to'lovi",
-      date: getOffsetDateString(-2),
-      createdAt: Date.now() - 86400000 * 2
+      date: getYesterdayDateString(),
+      createdAt: Date.now() - 86400000 * 1.5
     },
     {
-      id: "tx-demo-4",
+      id: "tx-demo-5",
       type: "expense",
       amount: 280000,
       category: "shopping",
       paymentMethod: "card",
       note: "Uzum Market xaridlar",
-      date: getOffsetDateString(-4),
-      createdAt: Date.now() - 86400000 * 4
-    },
-    {
-      id: "tx-demo-5",
-      type: "expense",
-      amount: 85000,
-      category: "entertainment",
-      paymentMethod: "cash",
-      note: "Kinoteatr chiptasi va qahva",
-      date: getOffsetDateString(-5),
-      createdAt: Date.now() - 86400000 * 5
+      date: getOffsetDateString(-3),
+      createdAt: Date.now() - 86400000 * 3
     },
     {
       id: "tx-demo-6",
       type: "expense",
-      amount: 600000,
-      category: "education",
-      paymentMethod: "card",
-      note: "Ingliz tili kursi to'lovi",
-      date: getOffsetDateString(-8),
-      createdAt: Date.now() - 86400000 * 8
+      amount: 85000,
+      category: "entertainment",
+      paymentMethod: "cash",
+      note: "Kinoteatr chiptasi & qahva",
+      date: getOffsetDateString(-5),
+      createdAt: Date.now() - 86400000 * 5
     },
+
+    // --- Avgust 2026 ---
     {
-      id: "tx-demo-7",
+      id: "tx-demo-aug-1",
       type: "income",
-      amount: 2500000,
+      amount: 5000000,
       category: "income",
       paymentMethod: "card",
-      note: "Freelance loyiha avansi",
-      date: getOffsetDateString(-10),
-      createdAt: Date.now() - 86400000 * 10
+      note: "Oylik maosh",
+      date: "2026-08-05",
+      createdAt: Date.now() - 86400000 * 40
+    },
+    {
+      id: "tx-demo-aug-2",
+      type: "expense",
+      amount: 1250000,
+      category: "food",
+      paymentMethod: "card",
+      note: "Oylik katta bozorlik",
+      date: "2026-08-10",
+      createdAt: Date.now() - 86400000 * 35
+    },
+    {
+      id: "tx-demo-aug-3",
+      type: "expense",
+      amount: 450000,
+      category: "education",
+      paymentMethod: "card",
+      note: "Maktab va kitoblar xaridi",
+      date: "2026-08-18",
+      createdAt: Date.now() - 86400000 * 27
+    },
+    {
+      id: "tx-demo-aug-4",
+      type: "expense",
+      amount: 380000,
+      category: "utilities",
+      paymentMethod: "card",
+      note: "Kommunal to'lovlar (Avgust)",
+      date: "2026-08-22",
+      createdAt: Date.now() - 86400000 * 23
+    },
+    {
+      id: "tx-demo-aug-5",
+      type: "expense",
+      amount: 120000,
+      category: "health",
+      paymentMethod: "cash",
+      note: "Dorixona va vitaminlar",
+      date: "2026-08-28",
+      createdAt: Date.now() - 86400000 * 17
+    },
+
+    // --- Iyul 2026 ---
+    {
+      id: "tx-demo-jul-1",
+      type: "income",
+      amount: 5000000,
+      category: "income",
+      paymentMethod: "card",
+      note: "Oylik maosh",
+      date: "2026-07-05",
+      createdAt: Date.now() - 86400000 * 70
+    },
+    {
+      id: "tx-demo-jul-2",
+      type: "expense",
+      amount: 1650000,
+      category: "entertainment",
+      paymentMethod: "card",
+      note: "Tog'da dam olish maskani",
+      date: "2026-07-12",
+      createdAt: Date.now() - 86400000 * 63
+    },
+    {
+      id: "tx-demo-jul-3",
+      type: "expense",
+      amount: 880000,
+      category: "food",
+      paymentMethod: "card",
+      note: "Yozgi meva-cheva va bozorlik",
+      date: "2026-07-19",
+      createdAt: Date.now() - 86400000 * 56
+    },
+    {
+      id: "tx-demo-jul-4",
+      type: "expense",
+      amount: 310000,
+      category: "utilities",
+      paymentMethod: "card",
+      note: "Elektr va suv to'lovi",
+      date: "2026-07-24",
+      createdAt: Date.now() - 86400000 * 51
+    },
+
+    // --- Iyun 2026 ---
+    {
+      id: "tx-demo-jun-1",
+      type: "income",
+      amount: 4800000,
+      category: "income",
+      paymentMethod: "card",
+      note: "Oylik maosh",
+      date: "2026-06-05",
+      createdAt: Date.now() - 86400000 * 100
+    },
+    {
+      id: "tx-demo-jun-2",
+      type: "expense",
+      amount: 950000,
+      category: "food",
+      paymentMethod: "card",
+      note: "Chorsu bozorlik",
+      date: "2026-06-14",
+      createdAt: Date.now() - 86400000 * 91
+    },
+    {
+      id: "tx-demo-jun-3",
+      type: "expense",
+      amount: 650000,
+      category: "shopping",
+      paymentMethod: "card",
+      note: "Yozgi kiyim-kechak",
+      date: "2026-06-20",
+      createdAt: Date.now() - 86400000 * 85
+    },
+    {
+      id: "tx-demo-jun-4",
+      type: "expense",
+      amount: 270000,
+      category: "utilities",
+      paymentMethod: "card",
+      note: "Kommunal to'lovlar",
+      date: "2026-06-26",
+      createdAt: Date.now() - 86400000 * 79
     }
   ];
 }
 
 // -------------------------------------------------------------------
-// 4. VIEW / PAGE SWITCHER (MOBIL UCHUN TUGMALI SAHIFALAR)
+// 4. VIEW / SCREEN CONTROLLER (MOBILE TABS)
 // -------------------------------------------------------------------
 function setActiveView(viewName) {
   state.currentView = viewName;
   document.body.dataset.activeView = viewName;
   localStorage.setItem(STORAGE_KEYS.ACTIVE_VIEW, viewName);
 
-  // Update Top Navigation Bar Tabs
+  // Update Floating Bottom Navigation buttons
+  const floatingBtns = document.querySelectorAll('.mobile-floating-nav .nav-circle-btn[data-view]');
+  floatingBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === viewName);
+  });
+
+  // Top nav buttons (hidden compatibility)
   const topTabs = document.querySelectorAll('.nav-tab-btn');
   topTabs.forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === viewName);
   });
 
-  // Update Mobile Bottom Navigation Bar Buttons
-  const bottomBtns = document.querySelectorAll('.mobile-nav-btn[data-view]');
-  bottomBtns.forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.view === viewName);
-  });
-
   // Dynamic refresh for specific views
-  if (viewName === 'analytics' || viewName === 'all') {
+  if (viewName === 'analytics') {
     initOrUpdateChart();
     if (categoryChartInstance) {
       setTimeout(() => categoryChartInstance.resize(), 50);
     }
   }
 
-  if (viewName === 'history' || viewName === 'all') {
+  if (viewName === 'history') {
     renderTransactionsList();
   }
 
-  if (viewName === 'dashboard' || viewName === 'all') {
+  if (viewName === 'dashboard') {
     updateDashboardUI();
     renderDashboardSnippet();
   }
 
-  // Smooth scroll to top when changing views
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (viewName === 'add') {
+    updatePayScreenAvailableBalance();
+  }
+
+  // Smooth scroll container to top
+  const scrollArea = document.querySelector('.app-content-scroll');
+  if (scrollArea) {
+    scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 function setupViewNavigation() {
-  // Top nav bar buttons
-  const topNav = document.querySelector('.view-navigation-bar');
-  if (topNav) {
-    topNav.addEventListener('click', (e) => {
-      const btn = e.target.closest('.nav-tab-btn');
+  // Floating bottom bar buttons
+  const floatingNav = document.querySelector('.mobile-floating-nav');
+  if (floatingNav) {
+    floatingNav.addEventListener('click', (e) => {
+      const btn = e.target.closest('.nav-circle-btn[data-view]');
       if (btn && btn.dataset.view) {
-        setActiveView(btn.dataset.view);
-      }
-    });
-  }
-
-  // Mobile bottom bar buttons
-  const bottomNav = document.querySelector('.mobile-bottom-nav');
-  if (bottomNav) {
-    bottomNav.addEventListener('click', (e) => {
-      const btn = e.target.closest('.mobile-nav-btn');
-      if (!btn) return;
-
-      if (btn.id === 'btn-mobile-budget') {
-        const btnOpenBudget = document.getElementById('btn-open-budget-modal');
-        if (btnOpenBudget) btnOpenBudget.click();
-        return;
-      }
-
-      if (btn.dataset.view) {
         setActiveView(btn.dataset.view);
       }
     });
@@ -257,14 +444,66 @@ function setupViewNavigation() {
   document.addEventListener('click', (e) => {
     const actionBtn = e.target.closest('[data-action="switch-view"]');
     if (actionBtn && actionBtn.dataset.target) {
-      setActiveView(actionBtn.dataset.target);
+      const targetView = actionBtn.dataset.target;
+      
+      // If clicking Chiqim / Kirim quick actions on Hero card
+      if (targetView === 'add' && actionBtn.dataset.mode) {
+        setTransactionType(actionBtn.dataset.mode);
+      }
+      
+      setActiveView(targetView);
     }
   });
 
-  // Initialize initial view (Default 'dashboard' on mobile, or saved view)
+  // Initialize initial view (Default 'dashboard')
   const savedView = localStorage.getItem(STORAGE_KEYS.ACTIVE_VIEW);
   const initialView = savedView || 'dashboard';
   setActiveView(initialView);
+}
+
+// -------------------------------------------------------------------
+// 4.1. THEME CONTROLLER (LIGHT / DARK MOOD)
+// -------------------------------------------------------------------
+function applyTheme(theme) {
+  state.theme = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  document.body.classList.toggle('dark-theme', theme === 'dark');
+  localStorage.setItem(STORAGE_KEYS.THEME, theme);
+
+  const themeIcon = document.getElementById('theme-icon');
+  if (themeIcon) {
+    if (theme === 'dark') {
+      themeIcon.className = 'fa-solid fa-sun';
+      themeIcon.style.color = '#fbf279';
+    } else {
+      themeIcon.className = 'fa-regular fa-moon';
+      themeIcon.style.color = '';
+    }
+  }
+
+  // Update chart border for contrast in dark mode
+  if (categoryChartInstance) {
+    categoryChartInstance.data.datasets[0].borderColor = theme === 'dark' ? '#1a231f' : '#ffffff';
+    categoryChartInstance.update('none');
+  }
+}
+
+function toggleTheme() {
+  const newTheme = state.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(newTheme);
+  const msg = newTheme === 'dark' ? "Tungi rejim yoqildi 🌙" : "Kunduzgi rejim yoqildi ☀️";
+  showToast(msg, 'info');
+}
+
+function initTheme() {
+  const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+  if (savedTheme) {
+    applyTheme(savedTheme);
+  } else {
+    // Respect system preference
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(prefersDark ? 'dark' : 'light');
+  }
 }
 
 // -------------------------------------------------------------------
@@ -282,10 +521,30 @@ function loadStateFromStorage() {
 
     const storedTx = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
     if (storedTx) {
-      state.transactions = JSON.parse(storedTx);
+      const parsed = JSON.parse(storedTx);
+      // Auto-merge demo transactions for previous months if user only has 1 month stored
+      const monthsInStorage = new Set((parsed || []).map(t => (t.date || '').substring(0, 7)).filter(Boolean));
+      if (monthsInStorage.size <= 1) {
+        const demoData = getFreshDemoTransactions();
+        const merged = Array.isArray(parsed) ? [...parsed] : [];
+        demoData.forEach(d => {
+          if (!merged.some(m => m.id === d.id)) {
+            merged.push(d);
+          }
+        });
+        state.transactions = merged;
+        saveTransactionsToStorage();
+      } else {
+        state.transactions = parsed;
+      }
     } else {
       state.transactions = getFreshDemoTransactions();
       saveTransactionsToStorage();
+    }
+
+    const storedHidden = localStorage.getItem(STORAGE_KEYS.BALANCE_HIDDEN);
+    if (storedHidden !== null) {
+      state.isBalanceHidden = storedHidden === 'true';
     }
   } catch (err) {
     console.error("Storage loading error:", err);
@@ -299,6 +558,7 @@ function saveTransactionsToStorage() {
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(state.transactions));
   } catch (err) {
     console.error("Failed to save transactions:", err);
+    showToast("Ma'lumotlarni saqlashda xatolik yuz berdi!", 'error');
   }
 }
 
@@ -320,27 +580,25 @@ function showToast(message, type = 'info', title = null) {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
 
-  const icons = {
-    success: 'fa-solid fa-circle-check',
-    warning: 'fa-solid fa-triangle-exclamation',
-    error: 'fa-solid fa-circle-xmark',
-    info: 'fa-solid fa-circle-info'
-  };
+  let iconClass = 'fa-solid fa-circle-info';
+  let defaultTitle = 'Eslatma';
 
-  const titles = {
-    success: title || 'Muvaffaqiyatli',
-    warning: title || 'Diqqat',
-    error: title || 'Xatolik',
-    info: title || 'Ma\'lumot'
-  };
+  if (type === 'success') {
+    iconClass = 'fa-solid fa-circle-check';
+    defaultTitle = 'Muvaffaqiyatli';
+  } else if (type === 'warning') {
+    iconClass = 'fa-solid fa-triangle-exclamation';
+    defaultTitle = 'Diqqat';
+  } else if (type === 'error') {
+    iconClass = 'fa-solid fa-circle-xmark';
+    defaultTitle = 'Xatolik';
+  }
 
   toast.innerHTML = `
-    <div class="toast-icon">
-      <i class="${icons[type] || icons.info}"></i>
-    </div>
+    <i class="${iconClass} toast-icon"></i>
     <div class="toast-content">
-      <strong>${titles[type]}</strong>
-      <p>${message}</p>
+      <strong>${title || defaultTitle}</strong>
+      <p>${escapeHtml(message)}</p>
     </div>
   `;
 
@@ -348,101 +606,101 @@ function showToast(message, type = 'info', title = null) {
 
   setTimeout(() => {
     toast.classList.add('toast-out');
-    setTimeout(() => toast.remove(), 260);
+    setTimeout(() => {
+      if (toast.parentElement) toast.remove();
+    }, 280);
   }, 3200);
 }
 
 // -------------------------------------------------------------------
-// 7. DASHBOARD & STATS CALCULATIONS
+// 7. FINANCIAL METRICS & DASHBOARD ENGINE
 // -------------------------------------------------------------------
-function calculateMetrics() {
+function computeFinancialMetrics() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
   const todayStr = getTodayDateString();
 
-  let totalIncome = 0;
-  let totalExpense = 0;
+  let totalExpenseAllTime = 0;
+  let totalIncomeAllTime = 0;
   let monthlyExpense = 0;
-  let monthlyCount = 0;
   let todayExpense = 0;
   let todayCount = 0;
+  let monthlyCount = 0;
 
   for (let i = 0; i < state.transactions.length; i++) {
     const tx = state.transactions[i];
-    const amount = Number(tx.amount) || 0;
-    const [txYear, txMonth] = (tx.date || '').split('-').map(Number);
-    const isThisMonth = txYear === currentYear && txMonth === currentMonth;
-    const isToday = tx.date === todayStr;
+    const amt = Number(tx.amount) || 0;
 
     if (tx.type === 'income') {
-      totalIncome += amount;
+      totalIncomeAllTime += amt;
     } else {
-      totalExpense += amount;
-      if (isThisMonth) {
-        monthlyExpense += amount;
-        monthlyCount++;
-      }
-      if (isToday) {
-        todayExpense += amount;
+      totalExpenseAllTime += amt;
+
+      if (tx.date === todayStr) {
+        todayExpense += amt;
         todayCount++;
+      }
+
+      if (tx.date) {
+        const [txYear, txMonth] = tx.date.split('-').map(Number);
+        if (txYear === currentYear && txMonth === currentMonth) {
+          monthlyExpense += amt;
+          monthlyCount++;
+        }
       }
     }
   }
 
-  const totalBalance = state.settings.initialBalance + totalIncome - totalExpense;
-  const budget = state.settings.monthlyBudget || 1;
-  const budgetPercent = Math.min(Math.round((monthlyExpense / budget) * 100), 100);
-  const rawBudgetPercent = Math.round((monthlyExpense / budget) * 100);
+  const initialBalance = Number(state.settings.initialBalance) || 0;
+  const totalBalance = initialBalance + totalIncomeAllTime - totalExpenseAllTime;
+  const budget = Number(state.settings.monthlyBudget) || 1;
   const budgetRemaining = Math.max(0, budget - monthlyExpense);
-  const daysInCurrentMonth = now.getDate();
-  const avgDaily = daysInCurrentMonth > 0 ? Math.round(monthlyExpense / daysInCurrentMonth) : 0;
+  const rawBudgetPercent = Math.round((monthlyExpense / budget) * 100);
+  const budgetPercent = Math.min(100, Math.max(0, rawBudgetPercent));
+  const daysInCurrentMonthSoFar = Math.max(1, now.getDate());
+  const avgDaily = Math.round(monthlyExpense / daysInCurrentMonthSoFar);
 
   return {
     totalBalance,
-    totalIncome,
-    totalExpense,
     monthlyExpense,
-    monthlyCount,
     todayExpense,
     todayCount,
+    monthlyCount,
     budget,
+    budgetRemaining,
     budgetPercent,
     rawBudgetPercent,
-    budgetRemaining,
     avgDaily
   };
 }
 
 function updateDashboardUI() {
-  const metrics = calculateMetrics();
+  const metrics = computeFinancialMetrics();
 
-  // 1. Total Balance
+  // 1. Total Balance on Hero Card
   const elBalance = document.getElementById('stat-total-balance');
+  const eyeIcon = document.getElementById('eye-icon');
+  
   if (elBalance) {
-    elBalance.textContent = formatCurrency(metrics.totalBalance);
+    if (state.isBalanceHidden) {
+      elBalance.textContent = '••••••••';
+      if (eyeIcon) {
+        eyeIcon.className = 'fa-regular fa-eye-slash';
+      }
+    } else {
+      animateCurrencyNumber(elBalance, metrics.totalBalance);
+      if (eyeIcon) {
+        eyeIcon.className = 'fa-regular fa-eye';
+      }
+    }
     elBalance.classList.toggle('text-danger', metrics.totalBalance < 0);
   }
 
-  // 2. Monthly Budget & Progress
-  const elBudget = document.getElementById('stat-monthly-budget');
-  const elBudgetBadge = document.getElementById('budget-percent-badge');
+  // 2. Budget Progress Bar inside Hero
   const elProgressBar = document.getElementById('budget-progress-bar');
+  const elBudgetBadge = document.getElementById('budget-percent-badge');
   const elSpentText = document.getElementById('budget-spent-text');
-  const elRemainingText = document.getElementById('budget-remaining-text');
-
-  if (elBudget) elBudget.textContent = formatCurrency(metrics.budget);
-  if (elBudgetBadge) {
-    elBudgetBadge.textContent = `${metrics.rawBudgetPercent}%`;
-    elBudgetBadge.className = 'badge';
-    if (metrics.rawBudgetPercent >= 100) {
-      elBudgetBadge.classList.add('badge-danger');
-    } else if (metrics.rawBudgetPercent >= 80) {
-      elBudgetBadge.classList.add('badge-warning');
-    } else {
-      elBudgetBadge.classList.add('badge-success');
-    }
-  }
 
   if (elProgressBar) {
     elProgressBar.style.width = `${metrics.budgetPercent}%`;
@@ -454,33 +712,36 @@ function updateDashboardUI() {
     }
   }
 
-  if (elSpentText) elSpentText.textContent = `${formatCurrency(metrics.monthlyExpense)} sarflandi`;
-  if (elRemainingText) {
-    if (metrics.monthlyExpense > metrics.budget) {
-      const overspent = metrics.monthlyExpense - metrics.budget;
-      elRemainingText.textContent = `Limitdan oshdi: ${formatCurrency(overspent)}`;
-      elRemainingText.classList.add('text-danger');
-    } else {
-      elRemainingText.textContent = `Qoldi: ${formatCurrency(metrics.budgetRemaining)}`;
-      elRemainingText.classList.remove('text-danger');
-    }
+  if (elBudgetBadge) {
+    elBudgetBadge.textContent = `${metrics.rawBudgetPercent}%`;
   }
 
-  // 3. Today's Expenses
+  if (elSpentText) {
+    elSpentText.textContent = `${formatCurrency(metrics.monthlyExpense)} sarflandi`;
+  }
+
+  // 3. Currency / Stats Cards
+  const elBudget = document.getElementById('stat-monthly-budget');
+  const elRemaining = document.getElementById('budget-remaining-text');
+  if (elBudget) elBudget.textContent = formatCurrency(metrics.budget);
+  if (elRemaining) {
+    elRemaining.textContent = `Qoldi: ${formatCurrency(metrics.budgetRemaining)}`;
+  }
+
   const elToday = document.getElementById('stat-today-expense');
   const elTodayCount = document.getElementById('stat-today-count');
   if (elToday) elToday.textContent = formatCurrency(metrics.todayExpense);
   if (elTodayCount) elTodayCount.textContent = `${metrics.todayCount} ta to'lov`;
 
-  // 4. Monthly Total Expenses
+  // Hidden trackers for complete compatibility
   const elMonthly = document.getElementById('stat-monthly-expense');
   const elMonthlyCount = document.getElementById('stat-monthly-count');
   const elAvgDaily = document.getElementById('stat-avg-daily');
   if (elMonthly) elMonthly.textContent = formatCurrency(metrics.monthlyExpense);
   if (elMonthlyCount) elMonthlyCount.textContent = `${metrics.monthlyCount} ta to'lov`;
-  if (elAvgDaily) elAvgDaily.textContent = `O'rtacha kunlik: ${formatCurrency(metrics.avgDaily)}`;
+  if (elAvgDaily) elAvgDaily.textContent = `O'rtacha: ${formatCurrency(metrics.avgDaily)}`;
 
-  // 5. Budget Warning Banner (>80%)
+  // 4. Budget Warning Banner (>80%)
   const warningBanner = document.getElementById('budget-warning-banner');
   const alertTitle = document.getElementById('alert-title');
   const alertDesc = document.getElementById('alert-desc');
@@ -489,20 +750,30 @@ function updateDashboardUI() {
     if (metrics.rawBudgetPercent >= 80) {
       warningBanner.classList.remove('hidden');
       if (metrics.rawBudgetPercent >= 100) {
-        alertTitle.textContent = `Diqqat: Oylik byudjet ${metrics.rawBudgetPercent}% sarflanib, limit oshib ketdi!`;
-        alertDesc.textContent = `Rejalashtirilgan ${formatCurrency(metrics.budget)} limitidan ${formatCurrency(metrics.monthlyExpense - metrics.budget)} ko'p mablag' sarflandi.`;
+        if (alertTitle) alertTitle.textContent = `Diqqat: Oylik byudjet ${metrics.rawBudgetPercent}% oshib ketdi!`;
+        if (alertDesc) alertDesc.textContent = `Limitdan ${formatCurrency(metrics.monthlyExpense - metrics.budget)} ko'proq sarflandi.`;
       } else {
-        alertTitle.textContent = `Diqqat: Oylik byudjetning ${metrics.rawBudgetPercent}% qismi ishlatildi!`;
-        alertDesc.textContent = `Limit tugashiga oz qoldi. Byudjetingizdan faqat ${formatCurrency(metrics.budgetRemaining)} mablag' qoldi.`;
+        if (alertTitle) alertTitle.textContent = `Diqqat: Byudjetning ${metrics.rawBudgetPercent}% sarflab bo'lindi!`;
+        if (alertDesc) alertDesc.textContent = `Qolgan mablag': ${formatCurrency(metrics.budgetRemaining)}.`;
       }
     } else {
       warningBanner.classList.add('hidden');
     }
   }
+
+  updatePayScreenAvailableBalance();
+}
+
+function updatePayScreenAvailableBalance() {
+  const elPayBal = document.getElementById('pay-available-balance');
+  if (elPayBal) {
+    const metrics = computeFinancialMetrics();
+    elPayBal.textContent = formatCurrency(metrics.totalBalance);
+  }
 }
 
 /**
- * Renders the 3 most recent transactions on the Dashboard view
+ * Renders the 3 most recent transactions on the Dashboard (Home)
  */
 function renderDashboardSnippet() {
   const container = document.getElementById('dashboard-snippet-list');
@@ -511,8 +782,8 @@ function renderDashboardSnippet() {
   const top3 = state.transactions.slice(0, 3);
   if (top3.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; color: var(--text-dimmed); font-size: 0.82rem; padding: 16px;">
-        Hali xarajatlar kiritilmadi.
+      <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px;">
+        Hali xarajatlar mavjud emas.
       </div>
     `;
     return;
@@ -527,18 +798,20 @@ function renderDashboardSnippet() {
     const amountClass = isExpense ? 'expense' : 'income';
 
     html += `
-      <li class="transaction-item" style="padding: 10px 14px;">
+      <li class="transaction-item">
         <div class="t-left">
-          <div class="t-icon-box" style="width: 38px; height: 38px; border-color: ${cat.color}40; background: ${cat.color}15; font-size: 1.1rem;">
+          <div class="t-icon-box" style="background: ${cat.color}15; color: ${cat.color};">
             <span>${cat.emoji}</span>
           </div>
           <div class="t-details">
-            <span class="t-title" style="font-size: 0.88rem;">${escapeHtml(tx.note || cat.name)}</span>
-            <span style="font-size: 0.72rem; color: var(--text-dimmed);">${formatDateUZ(tx.date)}</span>
+            <span class="t-title">${escapeHtml(tx.note || cat.name)}</span>
+            <div class="t-meta-row">
+              <span>${formatDateUZ(tx.date)}</span>
+            </div>
           </div>
         </div>
         <div class="t-right">
-          <span class="t-amount ${amountClass}" style="font-size: 0.95rem;">
+          <span class="t-amount ${amountClass}">
             ${sign} ${formatCurrency(tx.amount)}
           </span>
         </div>
@@ -549,43 +822,184 @@ function renderDashboardSnippet() {
 }
 
 // -------------------------------------------------------------------
-// 8. CHART.JS VISUAL ANALYTICS
+// 8. OYLIK TAHLIL VA ARXIV MOTOR (MONTH-BY-MONTH ANALYTICS & STATS)
 // -------------------------------------------------------------------
-function initOrUpdateChart() {
+
+function getMonthNameUZ(yearMonthStr) {
+  if (!yearMonthStr || yearMonthStr === 'all') return 'Barcha Oylar';
+  const parts = yearMonthStr.split('-');
+  if (parts.length < 2) return yearMonthStr;
+  const year = parts[0];
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const monthName = MONTH_NAMES_UZ[monthIdx] || '';
+  return `${monthName}, ${year}`;
+}
+
+function getAllUniqueMonths() {
+  const monthsSet = new Set();
+  
+  // Always include the last 8 months dynamically (Sentabr, Avgust, Iyul, Iyun, May, Aprel...)
+  const now = new Date();
+  for (let i = 0; i < 8; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    monthsSet.add(ym);
+  }
+
+  // Include any other months that exist in transactions
+  for (let i = 0; i < state.transactions.length; i++) {
+    const d = state.transactions[i].date;
+    if (d && d.length >= 7) {
+      monthsSet.add(d.substring(0, 7));
+    }
+  }
+
+  // Include currently selected month if valid
+  if (state.selectedMonthKey && state.selectedMonthKey !== 'all') {
+    monthsSet.add(state.selectedMonthKey);
+  }
+
+  const sorted = Array.from(monthsSet);
+  sorted.sort().reverse();
+  return sorted;
+}
+
+function changeSelectedMonth(monthKey) {
+  state.selectedMonthKey = monthKey;
+  updateMonthlyAnalyticsUI();
+}
+
+function stepMonth(direction) {
+  // direction: -1 = previous month (back in time: Sentabr -> Avgust)
+  // direction: +1 = next month (forward in time: Avgust -> Sentabr)
+  if (!state.selectedMonthKey || state.selectedMonthKey === 'all') {
+    const now = new Date();
+    state.selectedMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  } else {
+    const parts = state.selectedMonthKey.split('-');
+    let year = parseInt(parts[0], 10);
+    let month = parseInt(parts[1], 10);
+
+    if (direction < 0) {
+      // Oldingi oyga o'tish (Orqaga)
+      month -= 1;
+      if (month < 1) {
+        month = 12;
+        year -= 1;
+      }
+    } else {
+      // Keyingi oyga o'tish (Oldinga)
+      month += 1;
+      if (month > 12) {
+        month = 1;
+        year += 1;
+      }
+    }
+
+    state.selectedMonthKey = `${year}-${String(month).padStart(2, '0')}`;
+  }
+
+  updateMonthlyAnalyticsUI();
+}
+
+
+
+function updateMonthlyAnalyticsUI() {
+  const monthDisplay = document.getElementById('selected-month-display');
+  const chartBadge = document.getElementById('chart-month-badge');
+  const monthTitle = getMonthNameUZ(state.selectedMonthKey);
+
+  if (monthDisplay) monthDisplay.textContent = monthTitle;
+  if (chartBadge) chartBadge.textContent = monthTitle;
+
+  // Filter transactions for chosen month
+  let txs = state.transactions;
+  if (state.selectedMonthKey !== 'all') {
+    txs = txs.filter(t => t.date && t.date.startsWith(state.selectedMonthKey));
+  }
+
+  let totalIncome = 0;
+  let incomeCount = 0;
+  let totalExpense = 0;
+  let expenseCount = 0;
+  const categoryTotals = {};
+
+  for (let i = 0; i < txs.length; i++) {
+    const tx = txs[i];
+    const amt = Number(tx.amount) || 0;
+    if (tx.type === 'income') {
+      totalIncome += amt;
+      incomeCount++;
+    } else {
+      totalExpense += amt;
+      expenseCount++;
+      const cat = tx.category || 'other';
+      categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
+    }
+  }
+
+  const netSavings = totalIncome - totalExpense;
+
+  // Metric 1: Kirim
+  const elIncome = document.getElementById('month-total-income');
+  const elIncomeCount = document.getElementById('month-income-count');
+  if (elIncome) elIncome.textContent = `+${formatCurrency(totalIncome)}`;
+  if (elIncomeCount) elIncomeCount.textContent = `${incomeCount} ta daromad`;
+
+  // Metric 2: Chiqim
+  const elExpense = document.getElementById('month-total-expense');
+  const elExpenseCount = document.getElementById('month-expense-count');
+  if (elExpense) elExpense.textContent = `-${formatCurrency(totalExpense)}`;
+  if (elExpenseCount) elExpenseCount.textContent = `${expenseCount} ta to'lov`;
+
+  // Metric 3: Tejalgan Qoldiq
+  const elSavings = document.getElementById('month-net-savings');
+  const elSavingsStatus = document.getElementById('month-savings-status');
+  if (elSavings) {
+    if (netSavings >= 0) {
+      elSavings.textContent = `+${formatCurrency(netSavings)}`;
+      elSavings.className = 'metric-value text-success';
+      if (elSavingsStatus) elSavingsStatus.textContent = 'Ortib qoldi (Tejaldi)';
+    } else {
+      elSavings.textContent = `-${formatCurrency(Math.abs(netSavings))}`;
+      elSavings.className = 'metric-value text-danger';
+      if (elSavingsStatus) elSavingsStatus.textContent = 'Ortiqcha sarf (Kamomad)';
+    }
+  }
+
+  // Metric 4: Byudjet holati
+  const elBudgetPct = document.getElementById('month-budget-percent');
+  const elBudgetBar = document.getElementById('month-mini-bar-fill');
+  const monthlyBudget = Number(state.settings.monthlyBudget) || 1;
+  const budgetPct = Math.round((totalExpense / monthlyBudget) * 100);
+
+  if (elBudgetPct) elBudgetPct.textContent = `${budgetPct}%`;
+  if (elBudgetBar) {
+    elBudgetBar.style.width = `${Math.min(100, budgetPct)}%`;
+    if (budgetPct >= 100) {
+      elBudgetBar.style.background = 'var(--accent-danger)';
+    } else if (budgetPct >= 80) {
+      elBudgetBar.style.background = '#f59e0b';
+    } else {
+      elBudgetBar.style.background = 'var(--text-primary)';
+    }
+  }
+
+  // Update Center Total & Breakdown
+  const centerAmount = document.getElementById('center-amount');
+  if (centerAmount) centerAmount.textContent = formatCurrency(totalExpense);
+  renderCategoryBreakdown(categoryTotals, totalExpense);
+  updateChartWithData(categoryTotals, totalExpense);
+
+  // Render Month Transactions List
+  renderMonthTransactionsList(txs);
+}
+
+function updateChartWithData(categoryTotals, totalSpent) {
   const canvas = document.getElementById('categoryChart');
   if (!canvas) return;
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-
-  const categoryTotals = {};
-  let totalSpent = 0;
-
-  for (let i = 0; i < state.transactions.length; i++) {
-    const tx = state.transactions[i];
-    if (tx.type !== 'expense') continue;
-
-    if (state.chartPeriod === 'month') {
-      const [txYear, txMonth] = (tx.date || '').split('-').map(Number);
-      if (txYear !== currentYear || txMonth !== currentMonth) continue;
-    }
-
-    const cat = tx.category || 'other';
-    const amt = Number(tx.amount) || 0;
-    categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
-    totalSpent += amt;
-  }
-
-  const centerAmount = document.getElementById('center-amount');
-  if (centerAmount) {
-    centerAmount.textContent = formatCurrency(totalSpent);
-  }
-
-  renderCategoryBreakdown(categoryTotals, totalSpent);
-
   const categoriesWithData = Object.keys(categoryTotals).filter(cat => categoryTotals[cat] > 0);
-
   let labels = [];
   let data = [];
   let colors = [];
@@ -593,7 +1007,7 @@ function initOrUpdateChart() {
   if (categoriesWithData.length === 0) {
     labels = ["Xarajat yo'q"];
     data = [1];
-    colors = ["rgba(255, 255, 255, 0.1)"];
+    colors = ["#e2e8e4"];
   } else {
     for (let i = 0; i < categoriesWithData.length; i++) {
       const cat = categoriesWithData[i];
@@ -604,10 +1018,13 @@ function initOrUpdateChart() {
     }
   }
 
+  const borderColor = state.theme === 'dark' ? '#1a231f' : '#ffffff';
+
   if (categoryChartInstance) {
     categoryChartInstance.data.labels = labels;
     categoryChartInstance.data.datasets[0].data = data;
     categoryChartInstance.data.datasets[0].backgroundColor = colors;
+    categoryChartInstance.data.datasets[0].borderColor = borderColor;
     categoryChartInstance.update('none');
   } else {
     const ctx = canvas.getContext('2d');
@@ -618,30 +1035,27 @@ function initOrUpdateChart() {
         datasets: [{
           data: data,
           backgroundColor: colors,
-          borderColor: '#1e293b',
-          borderWidth: 2,
+          borderColor: borderColor,
+          borderWidth: 3,
           hoverOffset: 4
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        resizeDelay: 120,
-        animation: { duration: 350 },
         cutout: '72%',
+        animation: { duration: 300 },
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-            titleColor: '#fff',
-            bodyColor: '#e2e8f0',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            borderWidth: 1,
+            backgroundColor: '#121413',
+            titleColor: '#ffffff',
+            bodyColor: '#e4ece7',
             padding: 10,
-            usePointStyle: true,
+            cornerRadius: 10,
             callbacks: {
               label: function (context) {
-                if (categoriesWithData.length === 0) return " Hali xarajatlar yo'q";
+                if (categoriesWithData.length === 0) return " Xarajat yo'q";
                 const val = context.raw || 0;
                 const pct = totalSpent > 0 ? Math.round((val / totalSpent) * 100) : 0;
                 return ` ${formatCurrency(val)} (${pct}%)`;
@@ -658,32 +1072,37 @@ function renderCategoryBreakdown(categoryTotals, totalSpent) {
   const container = document.getElementById('category-breakdown');
   if (!container) return;
 
-  const entries = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+  const categoriesWithData = Object.keys(categoryTotals).filter(cat => categoryTotals[cat] > 0);
 
-  if (entries.length === 0 || totalSpent === 0) {
+  if (categoriesWithData.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; color: var(--text-dimmed); font-size: 0.82rem; padding: 20px;">
-        Tanlangan davr uchun hech qanday xarajat mavjud emas.
+      <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px;">
+        Tanlangan oy bo'yicha xarajatlar mavjud emas.
       </div>
     `;
     return;
   }
 
+  categoriesWithData.sort((a, b) => categoryTotals[b] - categoryTotals[a]);
+
   let html = '';
-  for (let i = 0; i < entries.length; i++) {
-    const [catKey, amount] = entries[i];
-    const meta = CATEGORIES[catKey] || CATEGORIES.other;
+  for (let i = 0; i < categoriesWithData.length; i++) {
+    const cat = categoriesWithData[i];
+    const meta = CATEGORIES[cat] || CATEGORIES.other;
+    const amount = categoryTotals[cat];
     const percent = totalSpent > 0 ? Math.round((amount / totalSpent) * 100) : 0;
 
     html += `
       <div class="breakdown-item">
-        <div class="breakdown-left">
-          <span class="breakdown-color-dot" style="background-color: ${meta.color}"></span>
-          <span class="breakdown-name">${meta.emoji} ${meta.name}</span>
+        <div class="breakdown-row">
+          <div class="breakdown-cat-name">
+            <span>${meta.emoji}</span>
+            <span>${meta.name}</span>
+          </div>
+          <span>${formatCurrency(amount)} (${percent}%)</span>
         </div>
-        <div class="breakdown-right">
-          <span class="breakdown-amount">${formatCurrency(amount)}</span>
-          <span class="breakdown-percent">${percent}%</span>
+        <div class="breakdown-bar-bg">
+          <div class="breakdown-bar-fill" style="width: ${percent}%; background: ${meta.color};"></div>
         </div>
       </div>
     `;
@@ -691,8 +1110,98 @@ function renderCategoryBreakdown(categoryTotals, totalSpent) {
   container.innerHTML = html;
 }
 
+function renderMonthTransactionsList(monthTxs) {
+  const container = document.getElementById('month-transactions-list');
+  const countBadge = document.getElementById('month-tx-total-count');
+  if (!container) return;
+
+  if (countBadge) {
+    countBadge.textContent = `${monthTxs.length} ta yozuv`;
+  }
+
+  if (monthTxs.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px;">
+        Tanlangan oyda amaliyotlar mavjud emas.
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  for (let i = 0; i < monthTxs.length; i++) {
+    const tx = monthTxs[i];
+    const isExpense = tx.type === 'expense';
+    const cat = isExpense ? (CATEGORIES[tx.category] || CATEGORIES.other) : CATEGORIES.income;
+    const sign = isExpense ? '-' : '+';
+    const amountClass = isExpense ? 'expense' : 'income';
+    const paymentLabel = tx.paymentMethod === 'card' ? '💳 Karta' : '💵 Naqd';
+
+    html += `
+      <li class="transaction-item">
+        <div class="t-left">
+          <div class="t-icon-box" style="background: ${cat.color}15; color: ${cat.color};">
+            <span>${cat.emoji}</span>
+          </div>
+          <div class="t-details">
+            <span class="t-title">${escapeHtml(tx.note || cat.name)}</span>
+            <div class="t-meta-row">
+              <span class="t-badge-payment">${paymentLabel}</span>
+              <span>•</span>
+              <span>${formatDateUZ(tx.date)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="t-right">
+          <span class="t-amount ${amountClass}">
+            ${sign} ${formatCurrency(tx.amount)}
+          </span>
+        </div>
+      </li>
+    `;
+  }
+  container.innerHTML = html;
+}
+
+function exportCurrentMonthCSV() {
+  let txs = state.transactions;
+  if (state.selectedMonthKey !== 'all') {
+    txs = txs.filter(t => t.date && t.date.startsWith(state.selectedMonthKey));
+  }
+  if (txs.length === 0) {
+    showToast("Tanlangan oyda eksport qilish uchun ma'lumot yo'q!", 'warning');
+    return;
+  }
+  const headers = ["ID", "Turi", "Summa (so'm)", "Kategoriya", "To'lov turi", "Sana", "Izoh"];
+  const rows = txs.map(t => [
+    t.id,
+    t.type === 'income' ? 'Daromad' : 'Xarajat',
+    t.amount,
+    (CATEGORIES[t.category] || {}).name || t.category,
+    t.paymentMethod === 'card' ? 'Karta' : 'Naqd pul',
+    t.date,
+    `"${(t.note || '').replace(/"/g, '""')}"`
+  ]);
+  const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\r\n");
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  const monthName = state.selectedMonthKey === 'all' ? 'barcha_oylar' : state.selectedMonthKey;
+  link.setAttribute('download', `hisobot_${monthName}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  showToast("Oylik hisobot CSV faylda yuklab olindi!", 'success');
+}
+
+function initOrUpdateChart() {
+  updateMonthlyAnalyticsUI();
+}
+
 // -------------------------------------------------------------------
-// 9. TRANSACTIONS LIST RENDERING & FILTERING
+// 9. TRANSACTIONS LIST & GROUPING BY DATE (From Screenshot)
 // -------------------------------------------------------------------
 function getFilteredAndSortedTransactions() {
   const searchInput = document.getElementById('search-input');
@@ -772,19 +1281,43 @@ function renderTransactionsList() {
 
   emptyStateEl.classList.add('hidden');
 
+  const todayStr = getTodayDateString();
+  const yesterdayStr = getYesterdayDateString();
+
   let html = '';
+  let lastGroupHeader = null;
+
   for (let i = 0; i < items.length; i++) {
     const tx = items[i];
     const isExpense = tx.type === 'expense';
     const cat = isExpense ? (CATEGORIES[tx.category] || CATEGORIES.other) : CATEGORIES.income;
-    const paymentLabel = tx.paymentMethod === 'card' ? '💳 Karta' : '💵 Naqd pul';
+    const paymentLabel = tx.paymentMethod === 'card' ? '💳 Karta' : '💵 Naqd';
     const sign = isExpense ? '-' : '+';
     const amountClass = isExpense ? 'expense' : 'income';
+
+    // Grouping by Date (Today, Yesterday, Date)
+    let currentGroupHeader = '';
+    if (tx.date === todayStr) {
+      currentGroupHeader = 'Today (Bugun)';
+    } else if (tx.date === yesterdayStr) {
+      currentGroupHeader = 'Yesterday (Kecha)';
+    } else {
+      currentGroupHeader = formatDateUZ(tx.date);
+    }
+
+    if (currentGroupHeader !== lastGroupHeader) {
+      html += `
+        <li style="list-style: none; padding: 10px 4px 2px; font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">
+          ${currentGroupHeader}
+        </li>
+      `;
+      lastGroupHeader = currentGroupHeader;
+    }
 
     html += `
       <li class="transaction-item" data-id="${tx.id}">
         <div class="t-left">
-          <div class="t-icon-box" style="border-color: ${cat.color}40; background: ${cat.color}15;">
+          <div class="t-icon-box" style="background: ${cat.color}15; color: ${cat.color};">
             <span>${cat.emoji}</span>
           </div>
           <div class="t-details">
@@ -793,9 +1326,9 @@ function renderTransactionsList() {
               <span class="t-badge-category">${cat.name}</span>
             </div>
             <div class="t-meta-row">
-              <span>${formatDateUZ(tx.date)}</span>
-              <span>•</span>
               <span class="t-badge-payment">${paymentLabel}</span>
+              <span>•</span>
+              <span>${formatDateUZ(tx.date)}</span>
             </div>
           </div>
         </div>
@@ -808,7 +1341,7 @@ function renderTransactionsList() {
             class="btn-delete-item" 
             title="O'chirish" 
             data-delete-id="${tx.id}"
-            aria-label="Xarajatni o'chirish"
+            aria-label="O'chirish"
           >
             <i class="fa-regular fa-trash-can"></i>
           </button>
@@ -833,11 +1366,54 @@ function escapeHtml(str) {
 }
 
 // -------------------------------------------------------------------
-// 10. FORM INTERACTIONS & SUBMISSIONS
+// 10. PAY / ADD TRANSACTION FORM LOGIC
 // -------------------------------------------------------------------
+function setTransactionType(type) {
+  // Update mini toggle on Pay screen
+  const miniBtns = document.querySelectorAll('.mini-type-btn');
+  miniBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+
+  // Update title
+  const payTitle = document.getElementById('pay-screen-title');
+  if (payTitle) {
+    payTitle.textContent = type === 'expense' ? 'Pay (Chiqim)' : 'Transfer (Kirim)';
+  }
+
+  // Update hidden type toggle
+  const legacyBtns = document.querySelectorAll('.type-btn');
+  legacyBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+
+  const categoryGroup = document.getElementById('category-group');
+  if (categoryGroup) {
+    categoryGroup.style.display = type === 'income' ? 'none' : 'block';
+  }
+
+  if (type === 'income') {
+    const payCatName = document.getElementById('pay-category-name');
+    const payCatEmoji = document.getElementById('pay-category-emoji');
+    const payCatSub = document.getElementById('pay-category-subtitle');
+    if (payCatName) payCatName.textContent = "Daromad";
+    if (payCatEmoji) payCatEmoji.textContent = "💰";
+    if (payCatSub) payCatSub.textContent = "Kirim amaliyoti";
+  } else {
+    const selectedCatInput = document.getElementById('selected-category');
+    const currentCat = selectedCatInput ? selectedCatInput.value : 'food';
+    const catMeta = CATEGORIES[currentCat] || CATEGORIES.food;
+    const payCatName = document.getElementById('pay-category-name');
+    const payCatEmoji = document.getElementById('pay-category-emoji');
+    const payCatSub = document.getElementById('pay-category-subtitle');
+    if (payCatName) payCatName.textContent = catMeta.name;
+    if (payCatEmoji) payCatEmoji.textContent = catMeta.emoji;
+    if (payCatSub) payCatSub.textContent = "Kategoriya tanlandi";
+  }
+}
+
 function setupFormHandlers() {
   const form = document.getElementById('transaction-form');
-  const typeBtns = document.querySelectorAll('.type-btn');
   const catPills = document.querySelectorAll('.cat-pill');
   const selectedCatInput = document.getElementById('selected-category');
   const chips = document.querySelectorAll('.chip');
@@ -849,79 +1425,85 @@ function setupFormHandlers() {
     inputDate.value = getTodayDateString();
   }
 
-  let currentType = 'expense';
-  typeBtns.forEach(btn => {
+  // Mini Type Buttons
+  const miniTypeBtns = document.querySelectorAll('.mini-type-btn');
+  miniTypeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      typeBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentType = btn.dataset.type;
-
-      const submitBtnSpan = document.querySelector('#btn-submit-transaction span');
-      if (currentType === 'income') {
-        if (categoryGroup) categoryGroup.style.display = 'none';
-        if (submitBtnSpan) submitBtnSpan.textContent = "Daromadni saqlash";
-      } else {
-        if (categoryGroup) categoryGroup.style.display = 'flex';
-        if (submitBtnSpan) submitBtnSpan.textContent = "Xarajatni saqlash";
-      }
+      setTransactionType(btn.dataset.type);
     });
   });
 
+  // Category Selection
   catPills.forEach(pill => {
     pill.addEventListener('click', () => {
       catPills.forEach(p => p.classList.remove('active'));
       pill.classList.add('active');
-      if (selectedCatInput) {
-        selectedCatInput.value = pill.dataset.cat;
-      }
+
+      const catKey = pill.dataset.cat;
+      if (selectedCatInput) selectedCatInput.value = catKey;
+
+      const catMeta = CATEGORIES[catKey] || CATEGORIES.other;
+      const payCatName = document.getElementById('pay-category-name');
+      const payCatEmoji = document.getElementById('pay-category-emoji');
+      if (payCatName) payCatName.textContent = catMeta.name;
+      if (payCatEmoji) payCatEmoji.textContent = catMeta.emoji;
     });
   });
 
+  // Toggle Category Grid
+  const btnToggleCat = document.getElementById('btn-toggle-category-picker');
+  if (btnToggleCat && categoryGroup) {
+    btnToggleCat.addEventListener('click', () => {
+      const isVisible = categoryGroup.style.display !== 'none';
+      categoryGroup.style.display = isVisible ? 'none' : 'block';
+    });
+  }
+
+  attachCommaInputFormatter(inputAmount);
+
+  // Quick Amount Chips
   chips.forEach(chip => {
     chip.addEventListener('click', () => {
-      const val = parseInt(chip.dataset.amount, 10);
-      const current = parseInt(inputAmount.value, 10) || 0;
-      inputAmount.value = current + val;
+      const chipVal = Number(chip.dataset.amount) || 0;
+      const currentVal = parseFormattedNumber(inputAmount.value);
+      inputAmount.value = formatNumberWithCommas(currentVal + chipVal);
       inputAmount.focus();
     });
   });
 
+  // Form Submission
   if (form) {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
 
-      const amount = parseFloat(inputAmount.value);
+      const activeMiniBtn = document.querySelector('.mini-type-btn.active');
+      const type = activeMiniBtn ? activeMiniBtn.dataset.type : 'expense';
+      const amount = parseFormattedNumber(inputAmount.value);
+      const category = type === 'expense' ? (selectedCatInput.value || 'food') : 'income';
       const note = document.getElementById('input-note').value.trim();
-      const date = inputDate.value;
+      const date = inputDate.value || getTodayDateString();
       const paymentMethod = document.querySelector('input[name="payment-method"]:checked')?.value || 'card';
-      const category = currentType === 'income' ? 'income' : (selectedCatInput.value || 'other');
 
-      if (!amount || isNaN(amount) || amount <= 0) {
-        showToast("Iltimos, to'g'ri summani kiriting!", 'warning');
+      if (!amount || amount <= 0) {
+        showToast("Iltimos, amaliyot summasini to'g'ri kiriting!", 'warning');
         inputAmount.focus();
         return;
       }
 
       if (!note) {
-        showToast("Iltimos, xarajat uchun qisqa izoh yoki nom yozing!", 'warning');
+        showToast("Iltimos, qisqa izoh yoki nomini kiriting!", 'warning');
         document.getElementById('input-note').focus();
-        return;
-      }
-
-      if (!date) {
-        showToast("Iltimos, sanani tanlang!", 'warning');
-        inputDate.focus();
         return;
       }
 
       const newTx = {
         id: generateId(),
-        type: currentType,
-        amount: Math.round(amount),
-        category: category,
-        paymentMethod: paymentMethod,
-        note: note,
-        date: date,
+        type,
+        amount,
+        category,
+        paymentMethod,
+        note,
+        date,
         createdAt: Date.now()
       };
 
@@ -933,95 +1515,86 @@ function setupFormHandlers() {
       initOrUpdateChart();
       renderTransactionsList();
 
-      const metrics = calculateMetrics();
-      const catMeta = CATEGORIES[category] || {};
-      const typeLabel = currentType === 'income' ? 'Daromad' : 'Xarajat';
-      showToast(`${catMeta.emoji || '✅'} ${formatCurrency(amount)} saqlandi!`, 'success', `${typeLabel} qo'shildi`);
+      const signLabel = type === 'expense' ? "Xarajat" : "Daromad";
+      showToast(`${signLabel}: ${formatCurrency(amount)} muvaffaqiyatli saqlandi!`, 'success');
 
-      if (currentType === 'expense' && metrics.rawBudgetPercent >= 80) {
-        setTimeout(() => {
-          showToast(`Oylik byudjetning ${metrics.rawBudgetPercent}% qismi ishlatildi! Ehtiyotkorlik bilan sarflang.`, 'warning', 'Limit Ogohlantirishi');
-        }, 900);
-      }
-
+      // Reset form
       inputAmount.value = '';
       document.getElementById('input-note').value = '';
-      inputDate.value = getTodayDateString();
 
-      // On mobile devices, offer smooth return to dashboard or stay
-      if (window.innerWidth <= 768) {
-        setTimeout(() => {
-          setActiveView('dashboard');
-        }, 800);
-      }
+      // Return to Dashboard screen
+      setActiveView('dashboard');
     });
   }
 }
 
 // -------------------------------------------------------------------
-// 11. MODALS CONTROLLER (BUDGET SETTINGS & CONFIRM DELETE)
+// 11. MODAL DIALOGS (SETTINGS & CONFIRM)
 // -------------------------------------------------------------------
 function setupModals() {
   const budgetModal = document.getElementById('budget-modal');
   const confirmModal = document.getElementById('confirm-modal');
   const btnOpenBudget = document.getElementById('btn-open-budget-modal');
   const btnQuickBalance = document.getElementById('btn-quick-balance');
+  const btnCardSettings = document.getElementById('btn-card-add-settings');
   const btnCloseModal = document.getElementById('btn-close-modal');
   const btnCancelModal = document.getElementById('btn-cancel-modal');
   const settingsForm = document.getElementById('settings-form');
   const inputBalance = document.getElementById('input-modal-balance');
   const inputBudget = document.getElementById('input-modal-budget');
 
-  const openBudgetModalHandler = () => {
-    inputBalance.value = state.settings.initialBalance;
-    inputBudget.value = state.settings.monthlyBudget;
-    budgetModal.classList.remove('hidden');
-    inputBudget.focus();
-  };
+  attachCommaInputFormatter(inputBalance);
+  attachCommaInputFormatter(inputBudget);
 
-  if (btnOpenBudget) btnOpenBudget.addEventListener('click', openBudgetModalHandler);
-  if (btnQuickBalance) btnQuickBalance.addEventListener('click', openBudgetModalHandler);
+  const openBudgetModal = () => {
+    if (inputBalance) inputBalance.value = formatNumberWithCommas(state.settings.initialBalance);
+    if (inputBudget) inputBudget.value = formatNumberWithCommas(state.settings.monthlyBudget);
+    if (budgetModal) budgetModal.classList.remove('hidden');
+  };
 
   const closeBudgetModal = () => {
-    budgetModal.classList.add('hidden');
+    if (budgetModal) budgetModal.classList.add('hidden');
   };
+
+  if (btnOpenBudget) btnOpenBudget.addEventListener('click', openBudgetModal);
+  if (btnQuickBalance) btnQuickBalance.addEventListener('click', openBudgetModal);
+  if (btnCardSettings) btnCardSettings.addEventListener('click', openBudgetModal);
   if (btnCloseModal) btnCloseModal.addEventListener('click', closeBudgetModal);
   if (btnCancelModal) btnCancelModal.addEventListener('click', closeBudgetModal);
 
   if (settingsForm) {
     settingsForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const newBalance = parseFloat(inputBalance.value);
-      const newBudget = parseFloat(inputBudget.value);
+      const newBal = parseFormattedNumber(inputBalance.value);
+      const newBud = parseFormattedNumber(inputBudget.value);
 
-      if (isNaN(newBalance) || newBalance < 0) {
-        showToast("Boshlang'ich balans noto'g'ri kiritildi!", 'warning');
+      if (isNaN(newBal) || newBal < 0) {
+        showToast("Balans summasini to'g'ri kiriting!", 'warning');
         return;
       }
 
-      if (isNaN(newBudget) || newBudget < 10000) {
-        showToast("Oylik byudjet kamida 10 000 so'm bo'lishi kerak!", 'warning');
+      if (isNaN(newBud) || newBud <= 0) {
+        showToast("Oylik byudjet summasini to'g'ri kiriting!", 'warning');
         return;
       }
 
-      state.settings.initialBalance = Math.round(newBalance);
-      state.settings.monthlyBudget = Math.round(newBudget);
+      state.settings.initialBalance = newBal;
+      state.settings.monthlyBudget = newBud;
       saveSettingsToStorage();
 
       updateDashboardUI();
-      initOrUpdateChart();
       closeBudgetModal();
-
-      showToast("Byudjet va balans muvaffaqiyatli yangilandi!", 'success');
+      showToast("Balans va oylik byudjet muvaffaqiyatli saqlandi!", 'success');
     });
   }
 
+  // Delete Confirm Modal
   const btnCloseConfirm = document.getElementById('btn-close-confirm');
   const btnCancelConfirm = document.getElementById('btn-cancel-confirm');
   const btnAgreeConfirm = document.getElementById('btn-agree-confirm');
 
   const closeConfirmModal = () => {
-    confirmModal.classList.add('hidden');
+    if (confirmModal) confirmModal.classList.add('hidden');
     state.deleteTargetId = null;
     state.isClearAllAction = false;
   };
@@ -1038,7 +1611,7 @@ function setupModals() {
         renderDashboardSnippet();
         initOrUpdateChart();
         renderTransactionsList();
-        showToast("Barcha xarajatlar tarixi o'chirildi.", 'info');
+        showToast("Barcha xarajatlar butunlay tozalab tashlandi!", 'info');
       } else if (state.deleteTargetId) {
         const itemToDelete = state.transactions.find(t => t.id === state.deleteTargetId);
         state.transactions = state.transactions.filter(t => t.id !== state.deleteTargetId);
@@ -1062,7 +1635,7 @@ function setupModals() {
 }
 
 // -------------------------------------------------------------------
-// 12. TOOLBAR, SEARCH, FILTERS & ACTIONS
+// 12. TOOLBAR, SEARCH, FILTERS & INTERACTIONS
 // -------------------------------------------------------------------
 function setupToolbarAndActions() {
   const searchInput = document.getElementById('search-input');
@@ -1071,12 +1644,10 @@ function setupToolbarAndActions() {
   const filterPayment = document.getElementById('filter-payment');
   const sortSelect = document.getElementById('sort-transactions');
   const btnClearAll = document.getElementById('btn-clear-all');
-  const btnLoadDemo = document.getElementById('btn-load-demo');
-  const btnEmptyDemo = document.getElementById('btn-empty-demo');
-  const btnExportData = document.getElementById('btn-export-data');
-  const btnDismissAlert = document.getElementById('btn-dismiss-alert');
+  const btnDismissAlert = document.getElementById('budget-warning-banner')?.querySelector('.btn-close');
   const warningBanner = document.getElementById('budget-warning-banner');
 
+  // Search input debounced
   if (searchInput) {
     const debouncedFilter = debounce(() => {
       renderTransactionsList();
@@ -1092,10 +1663,116 @@ function setupToolbarAndActions() {
     });
   }
 
-  if (filterCat) filterCat.addEventListener('change', renderTransactionsList);
-  if (filterPayment) filterPayment.addEventListener('change', renderTransactionsList);
-  if (sortSelect) sortSelect.addEventListener('change', renderTransactionsList);
+  // Toggle Search input on History screen
+  const btnToggleSearch = document.getElementById('btn-toggle-search');
+  const searchContainer = document.getElementById('history-search-container');
+  if (btnToggleSearch && searchContainer) {
+    btnToggleSearch.addEventListener('click', () => {
+      searchContainer.classList.toggle('active');
+      if (searchContainer.classList.contains('active') && searchInput) {
+        searchInput.focus();
+      }
+    });
+  }
 
+  // Theme toggle button (Light / Dark)
+  const btnToggleTheme = document.getElementById('btn-toggle-theme');
+  if (btnToggleTheme) {
+    btnToggleTheme.addEventListener('click', toggleTheme);
+  }
+
+  // Eye toggle on Hero Balance
+  const btnToggleEye = document.getElementById('btn-toggle-eye');
+  if (btnToggleEye) {
+    btnToggleEye.addEventListener('click', () => {
+      state.isBalanceHidden = !state.isBalanceHidden;
+      localStorage.setItem(STORAGE_KEYS.BALANCE_HIDDEN, String(state.isBalanceHidden));
+      updateDashboardUI();
+    });
+  }
+
+  // Horizontal Category Filter Chips on History screen
+  const catFilterChips = document.querySelectorAll('.cat-filter-chip');
+  catFilterChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      catFilterChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+
+      const filterVal = chip.dataset.filter;
+      if (filterCat) {
+        filterCat.value = filterVal;
+        renderTransactionsList();
+      }
+    });
+  });
+
+  // Card selector pill on History screen (•••• 2872 ⌵)
+  const cardPillTrigger = document.getElementById('card-pill-trigger');
+  const cardLabel = document.getElementById('selected-card-label');
+  if (cardPillTrigger && filterPayment) {
+    let modeIndex = 0;
+    const modes = [
+      { val: 'all', label: '•••• 2872 (Barchasi)' },
+      { val: 'card', label: '•••• 2872 (Karta)' },
+      { val: 'cash', label: '💵 Naqd pul' }
+    ];
+
+    cardPillTrigger.addEventListener('click', () => {
+      modeIndex = (modeIndex + 1) % modes.length;
+      filterPayment.value = modes[modeIndex].val;
+      if (cardLabel) cardLabel.textContent = modes[modeIndex].label;
+      renderTransactionsList();
+    });
+  }
+
+  // Payment method pill on Pay screen
+  const payMethodPill = document.getElementById('pay-method-pill');
+  const payCardLabel = document.getElementById('pay-card-label');
+  if (payMethodPill) {
+    let isCard = true;
+    payMethodPill.addEventListener('click', () => {
+      isCard = !isCard;
+      const radioCard = document.getElementById('pay-radio-card');
+      const radioCash = document.getElementById('pay-radio-cash');
+      if (isCard) {
+        if (radioCard) radioCard.checked = true;
+        if (payCardLabel) payCardLabel.textContent = '•••• 2872 (Karta)';
+      } else {
+        if (radioCash) radioCash.checked = true;
+        if (payCardLabel) payCardLabel.textContent = '💵 Naqd pul';
+      }
+    });
+  }
+
+  // Month Navigator Controls (< Mart, 2026 >)
+  const btnPrevMonth = document.getElementById('btn-prev-month');
+  const btnNextMonth = document.getElementById('btn-next-month');
+  const btnExportMonth = document.getElementById('btn-export-month');
+
+  if (btnPrevMonth) {
+    btnPrevMonth.addEventListener('click', () => stepMonth(-1));
+  }
+  if (btnNextMonth) {
+    btnNextMonth.addEventListener('click', () => stepMonth(1));
+  }
+
+  const monthNavCenter = document.querySelector('.month-nav-center');
+  if (monthNavCenter) {
+    monthNavCenter.addEventListener('click', () => {
+      const currentYM = getTodayDateString().substring(0, 7);
+      if (state.selectedMonthKey === 'all') {
+        changeSelectedMonth(currentYM);
+      } else {
+        changeSelectedMonth('all');
+      }
+    });
+  }
+
+  if (btnExportMonth) {
+    btnExportMonth.addEventListener('click', exportCurrentMonthCSV);
+  }
+
+  // Chart period tabs
   const chartTabs = document.querySelectorAll('.chart-tab');
   chartTabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1106,6 +1783,7 @@ function setupToolbarAndActions() {
     });
   });
 
+  // Transaction item deletion from History list
   const txListEl = document.getElementById('transactions-list');
   if (txListEl) {
     txListEl.addEventListener('click', (e) => {
@@ -1124,17 +1802,18 @@ function setupToolbarAndActions() {
 
         if (confirmTitle) confirmTitle.textContent = "Xarajatni o'chirish";
         if (confirmText) {
-          confirmText.textContent = `"${targetTx.note}" (${formatCurrency(targetTx.amount)}) xarajatini o'chirishga ishonchingiz komilmi?`;
+          confirmText.textContent = `"${targetTx.note}" (${formatCurrency(targetTx.amount)}) o'chirilsinmi?`;
         }
         if (confirmModal) confirmModal.classList.remove('hidden');
       }
     });
   }
 
+  // Clear all button
   if (btnClearAll) {
     btnClearAll.addEventListener('click', () => {
       if (state.transactions.length === 0) {
-        showToast("O'chirish uchun xarajatlar mavjud emas.", 'info');
+        showToast("O'chirish uchun ma'lumotlar mavjud emas.", 'info');
         return;
       }
       state.isClearAllAction = true;
@@ -1146,13 +1825,14 @@ function setupToolbarAndActions() {
 
       if (confirmTitle) confirmTitle.textContent = "Barcha xarajatlarni tozalash";
       if (confirmText) {
-        confirmText.textContent = "Barcha kiritilgan xarajatlar butunlay o'chiriladi. Ushbu amalni ortga qaytarib bo'lmaydi!";
+        confirmText.textContent = "Barcha kiritilgan xarajatlar butunlay o'chiriladi. Rozimisiz?";
       }
       if (confirmModal) confirmModal.classList.remove('hidden');
     });
   }
 
-  const loadDemoDataHandler = () => {
+  // Demo data loaders
+  const loadDemoData = () => {
     state.transactions = getFreshDemoTransactions();
     state.settings = { ...DEFAULT_SETTINGS };
     saveTransactionsToStorage();
@@ -1163,16 +1843,21 @@ function setupToolbarAndActions() {
     initOrUpdateChart();
     renderTransactionsList();
 
-    showToast("Namunaviy xarajatlar muvaffaqiyatli yuklandi!", 'success', 'Demo ma\'lumotlar');
+    showToast("Namunaviy ma'lumotlar muvaffaqiyatli yuklandi!", 'success');
   };
 
-  if (btnLoadDemo) btnLoadDemo.addEventListener('click', loadDemoDataHandler);
-  if (btnEmptyDemo) btnEmptyDemo.addEventListener('click', loadDemoDataHandler);
+  const btnDemoTop = document.getElementById('btn-demo-data-top');
+  const btnEmptyDemo = document.getElementById('btn-empty-demo');
+  const btnModalDemo = document.getElementById('btn-modal-demo');
+  if (btnDemoTop) btnDemoTop.addEventListener('click', loadDemoData);
+  if (btnEmptyDemo) btnEmptyDemo.addEventListener('click', loadDemoData);
+  if (btnModalDemo) btnModalDemo.addEventListener('click', loadDemoData);
 
-  if (btnExportData) {
-    btnExportData.addEventListener('click', exportToCSV);
-  }
+  // CSV export
+  const btnModalExport = document.getElementById('btn-modal-export');
+  if (btnModalExport) btnModalExport.addEventListener('click', exportToCSV);
 
+  // Dismiss alert banner
   if (btnDismissAlert && warningBanner) {
     btnDismissAlert.addEventListener('click', () => {
       warningBanner.classList.add('hidden');
@@ -1181,11 +1866,11 @@ function setupToolbarAndActions() {
 }
 
 // -------------------------------------------------------------------
-// 13. DATA EXPORT TO CSV
+// 13. CSV EXPORT
 // -------------------------------------------------------------------
 function exportToCSV() {
   if (state.transactions.length === 0) {
-    showToast("Eksport qilish uchun hech qanday ma'lumot topilmadi!", 'warning');
+    showToast("Eksport qilish uchun hech qanday ma'lumot yo'q!", 'warning');
     return;
   }
 
@@ -1205,26 +1890,38 @@ function exportToCSV() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `xarajatlar_${getTodayDateString()}.csv`);
+  link.setAttribute('download', `hisob_kitob_${getTodayDateString()}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 
-  showToast("Ma'lumotlar CSV fayl ko'rinishida yuklab olindi.", 'success', 'Eksport qilindi');
+  showToast("Ma'lumotlar CSV formatida yuklab olindi.", 'success');
 }
 
 // -------------------------------------------------------------------
-// 14. DATE DISPLAY
+// 14. REAL-TIME CLOCK & DATE
 // -------------------------------------------------------------------
+function startStatusClock() {
+  const clockEl = document.getElementById('status-clock');
+  const updateTime = () => {
+    if (!clockEl) return;
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    clockEl.textContent = `${hours}:${minutes}`;
+  };
+  updateTime();
+  setInterval(updateTime, 10000);
+}
+
 function updateCurrentDateDisplay() {
   const display = document.getElementById('current-date-display');
   if (display) {
     const now = new Date();
     const day = now.getDate();
     const month = MONTH_NAMES_UZ[now.getMonth()];
-    const year = now.getFullYear();
-    display.textContent = `Bugun: ${day}-${month}, ${year}`;
+    display.textContent = `${day}-${month}`;
   }
 }
 
@@ -1233,6 +1930,8 @@ function updateCurrentDateDisplay() {
 // -------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   loadStateFromStorage();
+  initTheme();
+  startStatusClock();
   updateCurrentDateDisplay();
   setupViewNavigation();
   setupFormHandlers();
@@ -1243,5 +1942,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initOrUpdateChart();
   renderTransactionsList();
 
-  console.log("💎 Smart Expense Tracker mobil navigatsiya va tejamkor rejimda ishga tushdi!");
+  console.log("💎 Smart Expense Tracker - Yangi mobil dizayn muvaffaqiyatli ishga tushdi!");
 });
