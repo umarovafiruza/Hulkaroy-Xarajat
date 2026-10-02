@@ -61,6 +61,7 @@ body.dark-theme {
   --bg-canvas: #090e0c;
   --bg-canvas-gradient: linear-gradient(135deg, #070d0a 0%, #0d1612 50%, #070e0b 100%);
   --bg-phone: #121815;
+  --bg-phone-gradient: linear-gradient(180deg, #18221d 0%, #121815 35%, #0e1411 100%);
   --bg-card-white: #1a231f;
   --bg-card-subtle: #151c18;
   --bg-dark-pill: #ffffff;
@@ -210,6 +211,75 @@ body.dark-theme {
 
 [data-theme="dark"] .breakdown-bar-bg {
   background: #222d28;
+}
+
+[data-theme="dark"] .currency-tag-pill {
+  background: rgba(255, 255, 255, 0.88);
+  color: #111312;
+}
+
+[data-theme="dark"] .currency-label {
+  color: #111312;
+}
+
+[data-theme="dark"] .currency-rate {
+  color: #27362e;
+}
+
+[data-theme="dark"] .eye-toggle-btn {
+  color: #111312;
+}
+
+[data-theme="dark"] .hero-balance-value {
+  color: #111312;
+}
+
+[data-theme="dark"] .hero-sub {
+  color: #3b473f;
+}
+
+[data-theme="dark"] .balance-status-tag {
+  background: rgba(0, 0, 0, 0.1);
+  color: #27362e;
+}
+
+[data-theme="dark"] .user-name {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .screen-title {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .greeting-sub {
+  color: #a4b8ad;
+}
+
+[data-theme="dark"] .t-icon-box {
+  background: #232f28;
+}
+
+[data-theme="dark"] .cat-pill {
+  background: #1c2621;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .cat-name {
+  color: #f2f7f4;
+}
+
+[data-theme="dark"] .month-nav-title {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .month-calendar-icon {
+  color: #a4b8ad;
+}
+
+[data-theme="dark"] .month-nav-arrow {
+  background: #1e2822;
+  color: #f2f7f4;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Smooth transition when switching themes */
@@ -519,26 +589,31 @@ body[data-active-view="all"] .page-view-section {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(8px);
   padding: 4px 12px;
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #111312;
+}
+
+.currency-label {
+  color: #111312;
+  font-weight: 800;
 }
 
 .currency-rate {
   font-size: 0.68rem;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: #2b3930;
 }
 
 .eye-toggle-btn {
   background: transparent;
   border: none;
   font-size: 1.1rem;
-  color: var(--text-primary);
+  color: #111312;
   cursor: pointer;
   padding: 4px;
   display: flex;
