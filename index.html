@@ -72,18 +72,7 @@
           <div class="user-profile">
             <div class="user-info">
               <span class="greeting-sub">Xush kelibsiz!</span>
-              <div class="user-name-wrapper">
-                <input 
-                  type="text" 
-                  id="user-name-input" 
-                  class="user-name-input" 
-                  placeholder="Ismingiz..." 
-                  maxlength="25"
-                  autocomplete="off"
-                  title="Ismingizni kiriting"
-                >
-                <i class="fa-solid fa-pen user-name-edit-icon" id="user-name-edit-icon" title="Ismni o'zgartirish"></i>
-              </div>
+              <h2 class="user-name" id="user-display-name">Foydalanuvchi ✨</h2>
             </div>
           </div>
 
@@ -699,19 +688,21 @@
 
       <form id="settings-form" class="modal-body">
         <div class="form-group">
-          <label for="input-modal-username" class="form-label">
-            <span>Foydalanuvchi Ismi</span>
+          <label for="input-modal-name" class="form-label">
+            <span>Ismingiz</span>
           </label>
           <div class="input-wrapper">
+            <span class="input-prefix"><i class="fa-regular fa-user"></i></span>
             <input 
               type="text" 
-              id="input-modal-username" 
+              id="input-modal-name" 
               class="form-control" 
-              placeholder="Ismingizni kiriting"
-              maxlength="25"
+              placeholder="Masalan: Bekzod" 
+              maxlength="30"
+              autocomplete="name"
             >
           </div>
-          <small class="form-hint">Sayt boshqaruv panelida ko'rinadigan ismingiz.</small>
+          <small class="form-hint">Bosh sahifada ko'rinadigan ismingiz.</small>
         </div>
 
         <div class="form-group">
@@ -793,6 +784,47 @@
         <button type="button" id="btn-cancel-confirm" class="btn-secondary-pill">Bekor qilish</button>
         <button type="button" id="btn-agree-confirm" class="btn-danger-pill">Ha, o'chirish</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Onboarding Modal (Yangi foydalanuvchilar uchun ismni so'rash) -->
+  <div id="onboarding-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <div class="modal-title-icon">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <h3>Xush kelibsiz! 👋</h3>
+        </div>
+      </div>
+      <form id="onboarding-form" class="modal-body">
+        <p class="onboarding-desc">
+          Xarajatlaringizni oson va qulay hisoblab borish uchun ismingizni kiriting:
+        </p>
+        <div class="form-group">
+          <label for="input-onboarding-name" class="form-label">
+            <span>Ismingiz</span>
+          </label>
+          <div class="input-wrapper">
+            <span class="input-prefix"><i class="fa-regular fa-user"></i></span>
+            <input 
+              type="text" 
+              id="input-onboarding-name" 
+              class="form-control" 
+              placeholder="Masalan: Bekzod" 
+              maxlength="30"
+              autocomplete="name"
+            >
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-skip-onboarding" class="btn-secondary-pill">O'tkazib yuborish</button>
+          <button type="submit" class="btn-black-pill">
+            <i class="fa-solid fa-arrow-right"></i> Boshlash
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

@@ -16,7 +16,8 @@ const STORAGE_KEYS = {
   SETTINGS: 'smart_expense_settings_v4',
   ACTIVE_VIEW: 'smart_expense_active_view_v4',
   BALANCE_HIDDEN: 'smart_expense_balance_hidden_v4',
-  THEME: 'smart_expense_theme_v4'
+  THEME: 'smart_expense_theme_v4',
+  ONBOARDED: 'smart_expense_onboarded_v4'
 };
 
 const CATEGORIES = {
@@ -37,9 +38,9 @@ const MONTH_NAMES_UZ = [
 ];
 
 const DEFAULT_SETTINGS = {
-  userName: '',
   initialBalance: 0,
-  monthlyBudget: 0
+  monthlyBudget: 0,
+  userName: ''
 };
 
 // -------------------------------------------------------------------
@@ -558,6 +559,14 @@ function saveSettingsToStorage() {
   }
 }
 
+function updateUserDisplayName() {
+  const el = document.getElementById('user-display-name');
+  if (el) {
+    const rawName = state.settings && state.settings.userName ? state.settings.userName.trim() : '';
+    el.textContent = rawName ? `${rawName} ✨` : 'Foydalanuvchi ✨';
+  }
+}
+
 // -------------------------------------------------------------------
 // 6. TOAST NOTIFICATION SYSTEM (O'CHIRILGAN)
 // -------------------------------------------------------------------
@@ -665,6 +674,7 @@ function computeFinancialMetrics() {
 }
 
 function updateDashboardUI() {
+  updateUserDisplayName();
   const metrics = computeFinancialMetrics();
 
   // 1. Total Balance on Hero Card
@@ -1516,7 +1526,7 @@ function setupModals() {
   const btnCloseModal = document.getElementById('btn-close-modal');
   const btnCancelModal = document.getElementById('btn-cancel-modal');
   const settingsForm = document.getElementById('settings-form');
-  const inputUsername = document.getElementById('input-modal-username');
+  const inputName = document.getElementById('input-modal-name');
   const inputBalance = document.getElementById('input-modal-balance');
   const inputBudget = document.getElementById('input-modal-budget');
 
@@ -1524,7 +1534,7 @@ function setupModals() {
   attachCommaInputFormatter(inputBudget);
 
   const openBudgetModal = () => {
-    if (inputUsername) inputUsername.value = state.settings.userName || '';
+    if (inputName) inputName.value = state.settings.userName || '';
     if (inputBalance) inputBalance.value = formatNumberWithCommas(state.settings.initialBalance);
     if (inputBudget) inputBudget.value = formatNumberWithCommas(state.settings.monthlyBudget);
     if (budgetModal) budgetModal.classList.remove('hidden');
@@ -1556,14 +1566,13 @@ function setupModals() {
         return;
       }
 
-      if (inputUsername) {
-        state.settings.userName = inputUsername.value.trim();
-        updateUserNameHeader();
+      if (inputName) {
+        state.settings.userName = inputName.value.trim();
       }
-
       state.settings.initialBalance = newBal;
       state.settings.monthlyBudget = newBud;
       saveSettingsToStorage();
+      updateUserDisplayName();
 
       updateDashboardUI();
       closeBudgetModal();
@@ -1614,6 +1623,58 @@ function setupModals() {
   window.addEventListener('click', (e) => {
     if (e.target === budgetModal) closeBudgetModal();
     if (e.target === confirmModal) closeConfirmModal();
+  });
+
+  setupOnboarding();
+}
+
+// -------------------------------------------------------------------
+// 11.1. FIRST-TIME USER ONBOARDING SYSTEM
+// -------------------------------------------------------------------
+function setupOnboarding() {
+  const onboardingModal = document.getElementById('onboarding-modal');
+  const onboardingForm = document.getElementById('onboarding-form');
+  const inputOnboardingName = document.getElementById('input-onboarding-name');
+  const btnSkipOnboarding = document.getElementById('btn-skip-onboarding');
+
+  const isOnboarded = localStorage.getItem(STORAGE_KEYS.ONBOARDED);
+
+  if (!isOnboarded && onboardingModal) {
+    setTimeout(() => {
+      onboardingModal.classList.remove('hidden');
+      if (inputOnboardingName) {
+        inputOnboardingName.value = state.settings.userName || '';
+        inputOnboardingName.focus();
+      }
+    }, 450);
+  }
+
+  const finishOnboarding = (name) => {
+    state.settings.userName = name;
+    saveSettingsToStorage();
+    localStorage.setItem(STORAGE_KEYS.ONBOARDED, 'true');
+    updateUserDisplayName();
+    if (onboardingModal) onboardingModal.classList.add('hidden');
+  };
+
+  if (onboardingForm) {
+    onboardingForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const enteredName = inputOnboardingName ? inputOnboardingName.value.trim() : '';
+      finishOnboarding(enteredName);
+    });
+  }
+
+  if (btnSkipOnboarding) {
+    btnSkipOnboarding.addEventListener('click', () => {
+      finishOnboarding('');
+    });
+  }
+
+  window.addEventListener('click', (e) => {
+    if (e.target === onboardingModal) {
+      finishOnboarding('');
+    }
   });
 }
 
@@ -1908,59 +1969,6 @@ function updateCurrentDateDisplay() {
   }
 }
 
-function setupUserNameHandler() {
-  const headerInput = document.getElementById('user-name-input');
-  const editIcon = document.getElementById('user-name-edit-icon');
-
-  const updateWidth = () => {
-    if (headerInput) {
-      const textLen = (headerInput.value || headerInput.placeholder || '').length;
-      headerInput.style.width = `${Math.min(Math.max(textLen + 1, 8), 20)}ch`;
-    }
-  };
-
-  if (headerInput) {
-    headerInput.value = state.settings.userName || '';
-    updateWidth();
-
-    headerInput.addEventListener('input', () => {
-      updateWidth();
-    });
-
-    headerInput.addEventListener('change', () => {
-      state.settings.userName = headerInput.value.trim();
-      saveSettingsToStorage();
-    });
-
-    headerInput.addEventListener('blur', () => {
-      state.settings.userName = headerInput.value.trim();
-      saveSettingsToStorage();
-    });
-
-    headerInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        headerInput.blur();
-      }
-    });
-  }
-
-  if (editIcon && headerInput) {
-    editIcon.addEventListener('click', () => {
-      headerInput.focus();
-      headerInput.select();
-    });
-  }
-}
-
-function updateUserNameHeader() {
-  const headerInput = document.getElementById('user-name-input');
-  if (headerInput) {
-    headerInput.value = state.settings.userName || '';
-    const textLen = (headerInput.value || headerInput.placeholder || '').length;
-    headerInput.style.width = `${Math.min(Math.max(textLen + 1, 8), 20)}ch`;
-  }
-}
-
 // -------------------------------------------------------------------
 // 15. INITIALIZATION
 // -------------------------------------------------------------------
@@ -1969,7 +1977,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   startStatusClock();
   updateCurrentDateDisplay();
-  setupUserNameHandler();
   setupViewNavigation();
   setupFormHandlers();
   setupModals();
