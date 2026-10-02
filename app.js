@@ -558,10 +558,11 @@ function saveSettingsToStorage() {
 }
 
 // -------------------------------------------------------------------
-// 6. TOAST NOTIFICATION SYSTEM
+// 6. TOAST NOTIFICATION SYSTEM (O'CHIRILGAN)
 // -------------------------------------------------------------------
 function showToast(message, type = 'info', title = null) {
-  const container = document.getElementById('toast-container');
+  // Tepadan bildirishnomalar chiqmasligi uchun o'chirilgan
+  return;
   if (!container) return;
 
   const toast = document.createElement('div');
@@ -728,24 +729,11 @@ function updateDashboardUI() {
   if (elMonthlyCount) elMonthlyCount.textContent = `${metrics.monthlyCount} ta to'lov`;
   if (elAvgDaily) elAvgDaily.textContent = `O'rtacha: ${formatCurrency(metrics.avgDaily)}`;
 
-  // 4. Budget Warning Banner (>80%)
+  // 4. Budget Warning Banner (>80%) - Tepadan bildirishnomalar o'chirilgan
   const warningBanner = document.getElementById('budget-warning-banner');
-  const alertTitle = document.getElementById('alert-title');
-  const alertDesc = document.getElementById('alert-desc');
-
   if (warningBanner) {
-    if (metrics.rawBudgetPercent >= 80) {
-      warningBanner.classList.remove('hidden');
-      if (metrics.rawBudgetPercent >= 100) {
-        if (alertTitle) alertTitle.textContent = `Diqqat: Oylik byudjet ${metrics.rawBudgetPercent}% oshib ketdi!`;
-        if (alertDesc) alertDesc.textContent = `Limitdan ${formatCurrency(metrics.monthlyExpense - metrics.budget)} ko'proq sarflandi.`;
-      } else {
-        if (alertTitle) alertTitle.textContent = `Diqqat: Byudjetning ${metrics.rawBudgetPercent}% sarflab bo'lindi!`;
-        if (alertDesc) alertDesc.textContent = `Qolgan mablag': ${formatCurrency(metrics.budgetRemaining)}.`;
-      }
-    } else {
-      warningBanner.classList.add('hidden');
-    }
+    warningBanner.classList.add('hidden');
+    warningBanner.style.display = 'none';
   }
 
   updatePayScreenAvailableBalance();

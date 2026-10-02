@@ -24,8 +24,8 @@
 </head>
 <body data-active-view="dashboard">
 
-  <!-- Toast Notification Container -->
-  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+  <!-- Toast Notification Container (O'chirilgan) -->
+  <div id="toast-container" class="toast-container" aria-live="polite" style="display: none !important;"></div>
 
   <!-- Mobile App Frame / Shell -->
   <div class="mobile-phone-frame">
@@ -41,8 +41,8 @@
       </div>
     </div>
 
-    <!-- Budget Warning Alert Banner (Appears dynamically when budget > 80%) -->
-    <div id="budget-warning-banner" class="budget-alert-banner hidden">
+    <!-- Budget Warning Alert Banner (O'chirilgan) -->
+    <div id="budget-warning-banner" class="budget-alert-banner hidden" style="display: none !important;">
       <div class="alert-icon">
         <i class="fa-solid fa-triangle-exclamation"></i>
       </div>
@@ -70,9 +70,6 @@
         <!-- Header: User Profile & Actions -->
         <header class="screen-header home-header">
           <div class="user-profile">
-            <div class="user-avatar">
-              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Avatar" class="avatar-img" onerror="this.src=''; this.innerText='H';">
-            </div>
             <div class="user-info">
               <span class="greeting-sub">Xush kelibsiz!</span>
               <h2 class="user-name">Hulkaroy ✨</h2>
