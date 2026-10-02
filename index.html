@@ -629,34 +629,6 @@
 
     </main>
 
-    <!-- ========================================== -->
-    <!-- FLOATING BOTTOM NAVIGATION BAR             -->
-    <!-- (Exact floating pill from reference image) -->
-    <!-- ========================================== -->
-    <nav class="mobile-floating-nav" aria-label="Mobil pastki navigatsiya">
-      
-      <!-- 1. Tarix (Transactions Icon) -->
-      <button class="nav-circle-btn" data-view="history" title="Tarix" aria-label="Xarajatlar tarixi">
-        <i class="fa-regular fa-clock"></i>
-      </button>
-
-      <!-- 2. Asosiy (Home / Center Black Button in image) -->
-      <button class="nav-circle-btn home-center-btn active" data-view="dashboard" title="Asosiy" aria-label="Asosiy panel">
-        <i class="fa-solid fa-house"></i>
-      </button>
-
-      <!-- 3. Pay / Xarajat qo'shish -->
-      <button class="nav-circle-btn" data-view="add" title="To'lov" aria-label="Xarajat kiritish">
-        <i class="fa-solid fa-plus"></i>
-      </button>
-
-      <!-- 4. Statistika (Analytics) -->
-      <button class="nav-circle-btn" data-view="analytics" title="Tahlil" aria-label="Grafik & Tahlil">
-        <i class="fa-solid fa-chart-pie"></i>
-      </button>
-
-    </nav>
-
     <!-- Hidden top nav tabs to preserve app.js logic without runtime errors -->
     <nav class="view-navigation-bar" style="display:none;">
       <button class="nav-tab-btn active" data-view="dashboard"></button>
@@ -667,6 +639,33 @@
     </nav>
 
   </div>
+
+  <!-- ========================================== -->
+  <!-- FLOATING BOTTOM NAVIGATION BAR (FIXED)     -->
+  <!-- ========================================== -->
+  <nav class="mobile-floating-nav" aria-label="Mobil pastki navigatsiya">
+    
+    <!-- 1. Tarix (Transactions Icon) -->
+    <button class="nav-circle-btn" data-view="history" title="Tarix" aria-label="Xarajatlar tarixi">
+      <i class="fa-regular fa-clock"></i>
+    </button>
+
+    <!-- 2. Asosiy (Home / Center Black Button) -->
+    <button class="nav-circle-btn home-center-btn active" data-view="dashboard" title="Asosiy" aria-label="Asosiy panel">
+      <i class="fa-solid fa-house"></i>
+    </button>
+
+    <!-- 3. Pay / Xarajat qo'shish -->
+    <button class="nav-circle-btn" data-view="add" title="To'lov" aria-label="Xarajat kiritish">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+
+    <!-- 4. Statistika (Analytics) -->
+    <button class="nav-circle-btn" data-view="analytics" title="Tahlil" aria-label="Grafik & Tahlil">
+      <i class="fa-solid fa-chart-pie"></i>
+    </button>
+
+  </nav>
 
   <!-- ========================================== -->
   <!-- MODALS (Byudjet & Tasdiqlash)             -->
