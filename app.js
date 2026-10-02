@@ -37,6 +37,7 @@ const MONTH_NAMES_UZ = [
 ];
 
 const DEFAULT_SETTINGS = {
+  userName: '',
   initialBalance: 0,
   monthlyBudget: 0
 };
@@ -513,7 +514,7 @@ function loadStateFromStorage() {
   try {
     const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     if (storedSettings) {
-      state.settings = JSON.parse(storedSettings);
+      state.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) };
     } else {
       state.settings = { ...DEFAULT_SETTINGS };
       saveSettingsToStorage();
@@ -1515,6 +1516,7 @@ function setupModals() {
   const btnCloseModal = document.getElementById('btn-close-modal');
   const btnCancelModal = document.getElementById('btn-cancel-modal');
   const settingsForm = document.getElementById('settings-form');
+  const inputUsername = document.getElementById('input-modal-username');
   const inputBalance = document.getElementById('input-modal-balance');
   const inputBudget = document.getElementById('input-modal-budget');
 
@@ -1522,6 +1524,7 @@ function setupModals() {
   attachCommaInputFormatter(inputBudget);
 
   const openBudgetModal = () => {
+    if (inputUsername) inputUsername.value = state.settings.userName || '';
     if (inputBalance) inputBalance.value = formatNumberWithCommas(state.settings.initialBalance);
     if (inputBudget) inputBudget.value = formatNumberWithCommas(state.settings.monthlyBudget);
     if (budgetModal) budgetModal.classList.remove('hidden');
@@ -1551,6 +1554,11 @@ function setupModals() {
       if (isNaN(newBud) || newBud <= 0) {
         showToast("Oylik byudjet summasini to'g'ri kiriting!", 'warning');
         return;
+      }
+
+      if (inputUsername) {
+        state.settings.userName = inputUsername.value.trim();
+        updateUserNameHeader();
       }
 
       state.settings.initialBalance = newBal;
@@ -1900,6 +1908,59 @@ function updateCurrentDateDisplay() {
   }
 }
 
+function setupUserNameHandler() {
+  const headerInput = document.getElementById('user-name-input');
+  const editIcon = document.getElementById('user-name-edit-icon');
+
+  const updateWidth = () => {
+    if (headerInput) {
+      const textLen = (headerInput.value || headerInput.placeholder || '').length;
+      headerInput.style.width = `${Math.min(Math.max(textLen + 1, 8), 20)}ch`;
+    }
+  };
+
+  if (headerInput) {
+    headerInput.value = state.settings.userName || '';
+    updateWidth();
+
+    headerInput.addEventListener('input', () => {
+      updateWidth();
+    });
+
+    headerInput.addEventListener('change', () => {
+      state.settings.userName = headerInput.value.trim();
+      saveSettingsToStorage();
+    });
+
+    headerInput.addEventListener('blur', () => {
+      state.settings.userName = headerInput.value.trim();
+      saveSettingsToStorage();
+    });
+
+    headerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        headerInput.blur();
+      }
+    });
+  }
+
+  if (editIcon && headerInput) {
+    editIcon.addEventListener('click', () => {
+      headerInput.focus();
+      headerInput.select();
+    });
+  }
+}
+
+function updateUserNameHeader() {
+  const headerInput = document.getElementById('user-name-input');
+  if (headerInput) {
+    headerInput.value = state.settings.userName || '';
+    const textLen = (headerInput.value || headerInput.placeholder || '').length;
+    headerInput.style.width = `${Math.min(Math.max(textLen + 1, 8), 20)}ch`;
+  }
+}
+
 // -------------------------------------------------------------------
 // 15. INITIALIZATION
 // -------------------------------------------------------------------
@@ -1908,6 +1969,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   startStatusClock();
   updateCurrentDateDisplay();
+  setupUserNameHandler();
   setupViewNavigation();
   setupFormHandlers();
   setupModals();

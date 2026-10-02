@@ -72,7 +72,18 @@
           <div class="user-profile">
             <div class="user-info">
               <span class="greeting-sub">Xush kelibsiz!</span>
-              <h2 class="user-name">Hulkaroy ✨</h2>
+              <div class="user-name-wrapper">
+                <input 
+                  type="text" 
+                  id="user-name-input" 
+                  class="user-name-input" 
+                  placeholder="Ismingiz..." 
+                  maxlength="25"
+                  autocomplete="off"
+                  title="Ismingizni kiriting"
+                >
+                <i class="fa-solid fa-pen user-name-edit-icon" id="user-name-edit-icon" title="Ismni o'zgartirish"></i>
+              </div>
             </div>
           </div>
 
@@ -687,6 +698,22 @@
       </div>
 
       <form id="settings-form" class="modal-body">
+        <div class="form-group">
+          <label for="input-modal-username" class="form-label">
+            <span>Foydalanuvchi Ismi</span>
+          </label>
+          <div class="input-wrapper">
+            <input 
+              type="text" 
+              id="input-modal-username" 
+              class="form-control" 
+              placeholder="Ismingizni kiriting"
+              maxlength="25"
+            >
+          </div>
+          <small class="form-hint">Sayt boshqaruv panelida ko'rinadigan ismingiz.</small>
+        </div>
+
         <div class="form-group">
           <label for="input-modal-balance" class="form-label">
             <span>Boshlang'ich Balans</span>

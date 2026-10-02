@@ -405,6 +405,54 @@ body[data-active-view="all"] .page-view-section {
   line-height: 1.2;
 }
 
+.user-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.user-name-input {
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px dashed transparent;
+  padding: 1px 0;
+  width: 12ch;
+  max-width: 190px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.user-name-input:hover,
+.user-name-input:focus {
+  border-bottom-color: var(--text-secondary);
+}
+
+.user-name-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.95rem;
+  opacity: 0.75;
+}
+
+.user-name-edit-icon {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+  padding: 3px;
+}
+
+.user-name-wrapper:hover .user-name-edit-icon {
+  color: var(--text-secondary);
+  transform: scale(1.15);
+}
+
 .header-right-actions {
   display: flex;
   align-items: center;
